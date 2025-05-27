@@ -1,0 +1,31 @@
+@echo off
+setlocal enabledelayedexpansion
+
+echo This is environment setup. :D
+
+REM This is Python checker
+where python >nul 2>nul
+if errorlevel 1 (
+    echo Please install [Python] first.
+    pause
+    exit /b
+) else (
+    echo You have Python. Good.
+)
+
+REM This is Java checker
+java -version >nul 2>nul
+if errorlevel 1 (
+    echo Please install [OpenJDK] first.
+    pause
+    exit /b
+) else (
+    echo You have Java. Good.
+)
+
+REM pip modules
+python -m pip install --upgrade pip
+pip install pyCraft requests colorama
+
+echo Setup finished. :D
+pause

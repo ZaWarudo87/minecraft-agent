@@ -24,10 +24,10 @@ from minecraft.networking.packets.serverbound.play import (
 from my_packets import PlayerDiggingPacket, PlayerBlockPlacementPacket
 
 # === 參數設定 ===
-SERVER          = 'localhost'
+SERVER          = '140.113.95.112'
 PORT            = 25565
 BOT_NAME        = 'DoggyBot'
-TARGET_NAME     = 'jared30off'
+TARGET_NAME     = 'Kurosaki0719'
 FOLLOW_DISTANCE = 3.0    # 格
 STEP_SIZE       = 0.2    # 每步距離 (格)
 SLEEP_INTERVAL  = 0.1    # 跟隨間隔 (秒)
