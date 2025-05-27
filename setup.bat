@@ -25,7 +25,8 @@ if errorlevel 1 (
 
 REM pip modules
 python -m pip install --upgrade pip
-pip install pyCraft requests colorama
+pip install requests colorama pyNBT cryptography
+pip install git+https://github.com/ammaraskar/pyCraft.git
 
 echo Setup finished. :D
 pause
