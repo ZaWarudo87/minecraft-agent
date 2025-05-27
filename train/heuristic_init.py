@@ -2,7 +2,7 @@ import csv
 import json
 import os
 
-def init_h_block():
+def init_h_block() -> None:
     dir = ["W", "WA", "A", "AS", "S", "SD", "D", "DW"]
     act = ["jump", "sneak"]
     for i in dir:
@@ -28,7 +28,7 @@ def init_h_block():
             for j in block:
                 fout.writerow([i, j["minStateId"], j["maxStateId"], j["name"], 0])
 
-def init_h_entity():
+def init_h_entity() -> None:
     with open("MCdata/entities.json", "r", encoding="utf-8") as f:
         fin = json.load(f)
     entity = []
@@ -44,7 +44,7 @@ def init_h_entity():
         for i in entity:
             fout.writerow([i["id"], i["name"], 0, 0])
 
-def init_rarity():
+def init_rarity() -> None:
     with open("MCdata/items.json", "r", encoding="utf-8") as f:
         fin = json.load(f)
     item = []
