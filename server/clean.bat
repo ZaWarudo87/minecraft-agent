@@ -8,7 +8,6 @@ rmdir /s /q versions
 rmdir /s /q world
 
 del /q *.json
-del /q server.properties
 
 echo Finished.
 pause
