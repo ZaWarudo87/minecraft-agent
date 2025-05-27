@@ -12,5 +12,3 @@ Minecraft, But My Friend Is An AI...
 ## Credits
 - `json`s in `train/MCdata` are from [minecraft-data](https://github.com/PrismarineJS/minecraft-data)
 - [Where did 30%off get `server.jar`?]
-
-hello world
