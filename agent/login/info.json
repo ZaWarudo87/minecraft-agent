@@ -1,8 +1,8 @@
 {
     "server": "localhost",
     "port": 25565,
-    "username": "Kurosaki0719",
-    "access_token": "eyJraWQiOiIwNDkxODEiLCJhbGciOiJSUzI1NiJ9.eyJ4dWlkIjoiMjUzNTQxMjAzMTQ3MjU4NCIsImFnZyI6IkFkdWx0Iiwic3ViIjoiZGJhNzVjNjctNzM1ZC00YTJhLTk1YjYtNmMwNzk4ZjgxZDk2IiwiYXV0aCI6IlhCT1giLCJucyI6ImRlZmF1bHQiLCJyb2xlcyI6W10sImlzcyI6ImF1dGhlbnRpY2F0aW9uIiwiZmxhZ3MiOlsibXVsdGlwbGF5ZXIiLCJ0d29mYWN0b3JhdXRoIiwibXNhbWlncmF0aW9uX3N0YWdlNCIsIm9yZGVyc18yMDIyIl0sInByb2ZpbGVzIjp7Im1jIjoiMzRkNDg3ZWUtODg0Yi00NmI2LWIwZGMtN2ZmNTJiOTBmNTBmIn0sInBsYXRmb3JtIjoiVU5LTk9XTiIsInl1aWQiOiJlNjRmMjAyZDZiZTAwOTI4ZmEwNWYzYTNhN2E0OGUzNCIsInBmZCI6W3sidHlwZSI6Im1jIiwiaWQiOiIzNGQ0ODdlZS04ODRiLTQ2YjYtYjBkYy03ZmY1MmI5MGY1MGYiLCJuYW1lIjoiS3Vyb3Nha2kwNzE5In1dLCJuYmYiOjE3NDg1MzIyMzMsImV4cCI6MTc0ODYxODYzMywiaWF0IjoxNzQ4NTMyMjMzfQ.IKpxnlGCkxb7jjcNoyvzgkoaXYb4Q-Ff9YBgkKrrXXTt-TUlm9jrGXTM8r345xdljW0NpztBdTdRkGhlBMBG2dCPCpuq_mKXYF0bFht9yVjQ1btLBDDInjrbRMT4baCOub7JlV6YJB0U1Bk7n8JD57v2osb7ynHut96k5xhrAw7cyX5nb1uED1KUMeLQMxsocd-v70ARTCRQ0jVEwYLRFhXbFT2Z0cODDcDV7hdW7A0dOjLA_MOfiDFxbSB4M4X92W19oTSutD_Q5DhDck77xne8VYcQVRz0AuWNgn5Vlkisq5Bx5KoUZL7NlBqYK5FixGz4kM1G6L88dpO4bcYkkg",
-    "id": "34d487ee884b46b6b0dc7ff52b90f50f",
-    "weird_username": "dba75c67-735d-4a2a-95b6-6c0798f81d96"
+    "username": "",
+    "access_token": "",
+    "id": "",
+    "weird_username": ""
 }
