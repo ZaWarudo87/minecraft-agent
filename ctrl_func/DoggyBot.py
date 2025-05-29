@@ -26,8 +26,10 @@ SLEEP_INTERVAL  = 0.1    # 跟隨間隔 (秒)
 conn             = Connection(SERVER, PORT, username=BOT_NAME)
 current_pos      = {'x':0.0,'y':0.0,'z':0.0}
 player_positions = {}    # entity_id -> {'x','y','z'}
+player_deltas   = {}    # entity_id -> {'dx','dy','dz'}
 target_id        = None
 following        = False
+tpid = None  # 用來追蹤目標的 Entity ID
 
 # 0. (Debug) 印出所有封包
 def handle_all(pkt: Packet):
@@ -62,17 +64,21 @@ conn.register_packet_listener(handle_spawn, SpawnPlayerPacket)
 
 # 3. 更新自己位置
 def handle_self_pos(pkt: PlayerPositionAndLookPacket):
+    global current_pos, tpid
     print(f"[🔄] 更新自己位置：({pkt.x:.2f},{pkt.y:.2f},{pkt.z:.2f})")
     current_pos['x'], current_pos['y'], current_pos['z'] = pkt.x, pkt.y, pkt.z
+    tpid = pkt.teleport_id
 conn.register_packet_listener(handle_self_pos, PlayerPositionAndLookPacket)
 
 # 4. 追蹤目標微移
 def handle_delta(pkt: EntityPositionDeltaPacket):
+    global player_deltas
     if pkt.entity_id == target_id:
-        p = player_positions[target_id]
-        p['x'] += pkt.delta_x_float
-        p['y'] += pkt.delta_y_float
-        p['z'] += pkt.delta_z_float
+        player_deltas[target_id] = {
+            'x': pkt.delta_x_float,
+            'y': pkt.delta_y_float,
+            'z': pkt.delta_z_float
+        }
         print(f"[🔄] delta：{pkt.entity_id}, x = {pkt.delta_x_float:.2f}, y = {pkt.delta_y_float:.2f}, z = {pkt.delta_z_float:.2f}")
 conn.register_packet_listener(handle_delta, EntityPositionDeltaPacket)
 
@@ -102,6 +108,9 @@ def handle_chat(pkt: ChatMessagePacket):
     elif cmd.startswith('!place '):
         _, xs, ys, zs = cmd.split()
         place_block(int(xs),int(ys),int(zs))
+    elif cmd == '!coor':
+        print(f"[🚀] 目前位置：x = {player_positions[target_id]['x']:.2f}, y = {player_positions[target_id]['y']:.2f}, z = {player_positions[target_id]['z']:.2f}")
+
 conn.register_packet_listener(handle_chat, ChatMessagePacket)
 
 # 6. 挖/放函式
@@ -121,22 +130,32 @@ def place_block(x,y,z,face=1,hand=0):
 # 7. 模仿踏步移動
 def move_step(dx,dz):
     pkt = PositionAndLookPacket()
-    pkt.x = current_pos['x']+dx; pkt.feet_y=current_pos['y']; pkt.z=current_pos['z']+dz
-    pkt.yaw=pkt.pitch=0; pkt.on_ground=True; conn.write_packet(pkt)
-    current_pos['x']+=dx; current_pos['z']+=dz
+    pkt.x = current_pos['x']+dx
+    pkt.feet_y=current_pos['y']
+    pkt.z=current_pos['z']+dz
+    pkt.yaw=pkt.pitch=0
+    pkt.on_ground=False
+    conn.write_packet(pkt)
 
 # 8. 跟隨執行緒
 def follow_loop():
+    global target_id, following, player_positions, player_deltas
     while True:
-        if following and target_id in player_positions:
-            tx,tz = player_positions[target_id]['x'], player_positions[target_id]['z']
-            cx,cz = current_pos['x'], current_pos['z']
-            dx, dz = tx-cx, tz-cz
-            dist = (dx*dx+dz*dz)**0.5
-            if dist > FOLLOW_DISTANCE:
-                step_dx, step_dz = dx/dist*STEP_SIZE, dz/dist*STEP_SIZE
-                move_step(step_dx, step_dz)
-                print(f"[DEBUG] 走一步 Δ=({step_dx:.2f},{step_dz:.2f}) 距離={dist:.2f}")
+        if target_id in player_positions and target_id in player_deltas:
+            p = player_positions[target_id]
+            d = player_deltas[target_id]
+            p['x'] += d['x']
+            p['y'] += d['y']
+            p['z'] += d['z']
+            if following:
+                tx,tz = p['x'], p['z']
+                cx,cz = current_pos['x'], current_pos['z']
+                dx, dz = tx-cx, tz-cz
+                dist = (dx*dx+dz*dz)**0.5
+                if dist > FOLLOW_DISTANCE:
+                    step_dx, step_dz = dx/dist*STEP_SIZE, dz/dist*STEP_SIZE
+                    move_step(step_dx, step_dz)
+                    print(f"[DEBUG] 走一步 Δ=({step_dx:.2f},{step_dz:.2f}) 距離={dist:.2f}")
         time.sleep(SLEEP_INTERVAL)
 
 # 9. on_join 啟動
