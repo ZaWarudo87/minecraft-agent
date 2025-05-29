@@ -7,20 +7,10 @@ from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet
 
 # ===== clientbound play 封包 =====
-from minecraft.networking.packets.clientbound.play import (
-    JoinGamePacket,
-    PlayerListItemPacket,
-    SpawnPlayerPacket,
-    PlayerPositionAndLookPacket,
-    EntityPositionDeltaPacket,
-    ChatMessagePacket,
-)
+from minecraft.networking.packets.clientbound.play import *
 
 # ===== serverbound play 封包 =====
-from minecraft.networking.packets.serverbound.play import (
-    PositionAndLookPacket,
-    TeleportConfirmPacket,
-)
+from minecraft.networking.packets.serverbound.play import *
 from my_packets import PlayerDiggingPacket, PlayerBlockPlacementPacket
 
 # === 參數設定 ===
@@ -42,29 +32,37 @@ following        = False
 # 0. (Debug) 印出所有封包
 def handle_all(pkt: Packet):
     print(f"[ALL] {pkt.__class__.__name__}")
-conn.register_packet_listener(handle_all, Packet)
+#conn.register_packet_listener(handle_all, Packet)
 
 # 1. 取得目標 Entity ID
 def handle_player_list(pkt: PlayerListItemPacket):
+    print(f"[🔔] 處理玩家列表封包")
     global target_id
-    if pkt.Action == PlayerListItemPacket.AddPlayerAction:
-        for e in pkt.entries:
-            name = getattr(e.profile, 'name', None)
-            if name == TARGET_NAME:
-                target_id = e.id
-                player_positions[target_id] = {'x':0.0,'y':0.0,'z':0.0}
-                print(f"[🔔] 找到玩家 {name}，EntityID={target_id}")
+    for action in pkt.actions:
+        if isinstance(action, PlayerListItemPacket.AddPlayerAction):
+            print(f"[加入] 玩家 {action.name} (UUID: {action.uuid})")
+            if action.name == TARGET_NAME:
+                target_id = action.uuid
+                print(f"[🔔] 找到玩家 {action.name}，UUID={target_id}")
+        elif isinstance(action, PlayerListItemPacket.RemovePlayerAction):
+            print(f"[離開] 玩家 (UUID: {action.uuid})")
+        elif isinstance(action, PlayerListItemPacket.UpdateGameModeAction):
+            print(f"[更新] {action.uuid} 模式改成 {action.gamemode}")
 conn.register_packet_listener(handle_player_list, PlayerListItemPacket)
 
 # 2. 初始座標
 def handle_spawn(pkt: SpawnPlayerPacket):
-    if pkt.entity_id == target_id:
+    global target_id
+    print(f"[🔔] 處理玩家生成封包：{pkt.entity_id} - {pkt.player_UUID}")
+    if pkt.player_UUID == target_id:
+        target_id = pkt.entity_id
         player_positions[target_id] = {'x':pkt.x,'y':pkt.y,'z':pkt.z}
         print(f"[🔔] 初始座標：({pkt.x:.2f},{pkt.y:.2f},{pkt.z:.2f})")
 conn.register_packet_listener(handle_spawn, SpawnPlayerPacket)
 
 # 3. 更新自己位置
 def handle_self_pos(pkt: PlayerPositionAndLookPacket):
+    print(f"[🔄] 更新自己位置：({pkt.x:.2f},{pkt.y:.2f},{pkt.z:.2f})")
     current_pos['x'], current_pos['y'], current_pos['z'] = pkt.x, pkt.y, pkt.z
 conn.register_packet_listener(handle_self_pos, PlayerPositionAndLookPacket)
 
@@ -72,13 +70,15 @@ conn.register_packet_listener(handle_self_pos, PlayerPositionAndLookPacket)
 def handle_delta(pkt: EntityPositionDeltaPacket):
     if pkt.entity_id == target_id:
         p = player_positions[target_id]
-        p['x'] += pkt.d_x/4096.0
-        p['y'] += pkt.d_y/4096.0
-        p['z'] += pkt.d_z/4096.0
+        p['x'] += pkt.delta_x_float
+        p['y'] += pkt.delta_y_float
+        p['z'] += pkt.delta_z_float
+        print(f"[🔄] delta：{pkt.entity_id}, x = {pkt.delta_x_float:.2f}, y = {pkt.delta_y_float:.2f}, z = {pkt.delta_z_float:.2f}")
 conn.register_packet_listener(handle_delta, EntityPositionDeltaPacket)
 
 # 5. 聊天指令
 def handle_chat(pkt: ChatMessagePacket):
+    print(f"[💬] 處理聊天封包：{pkt.json_data}")
     global following
     raw = pkt.json_data
     if isinstance(raw, str):
@@ -121,7 +121,7 @@ def place_block(x,y,z,face=1,hand=0):
 # 7. 模仿踏步移動
 def move_step(dx,dz):
     pkt = PositionAndLookPacket()
-    pkt.x = current_pos['x']+dx; pkt.y=current_pos['y']; pkt.z=current_pos['z']+dz
+    pkt.x = current_pos['x']+dx; pkt.feet_y=current_pos['y']; pkt.z=current_pos['z']+dz
     pkt.yaw=pkt.pitch=0; pkt.on_ground=True; conn.write_packet(pkt)
     current_pos['x']+=dx; current_pos['z']+=dz
 
