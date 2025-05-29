@@ -1,36 +1,17 @@
 import csv
 import os
-import sys
 import threading
 import time
 
 from sortedcontainers import SortedKeyList
-
 from minecraft.networking.connection import Connection
-from minecraft.networking.packets import PositionAndLookPacket
-from minecraft.networking.packets.clientbound.play import (
-    JoinGamePacket,
-    PlayerListItemPacket,
-    SpawnPlayerPacket,
-    PlayerPositionAndLookPacket,
-    EntityPositionDeltaPacket,
-    ChatMessagePacket,
-)
-from minecraft.networking.packets.serverbound.play import (
-    KeepAlivePacket,
-)
+
+from .move import *
 
 now_dir = os.path.dirname(__file__)
 heuristic_block = {}
 heuristic_entity = {}
 item_rarity = {}
-f3 = {
-    "x": 1,
-    "y": 1,
-    "z": 4,
-    "yaw": 5,
-    "pitch": 14
-}
 
 def read_file() -> None:
     global heuristic_block, heuristic_entity, item_rarity
@@ -97,28 +78,9 @@ def save_file_thread() -> None:
         save_file()
         print("Heuristic data auto-saved.")
 
-def handle_f3(pkt: PositionAndLookPacket) -> None:
-    global f3
-    f3 = {
-        "x": pkt.x,
-        "y": pkt.y,
-        "z": pkt.z,
-        "yaw": pkt.yaw,
-        "pitch": pkt.pitch
-    }
-    print(f"F3 Data - X: {f3['x']:.2f}, Y: {f3['y']:.2f}, Z: {f3['z']:.2f}, Yaw: {f3['yaw']:.2f}, Pitch: {f3['pitch']:.2f}")
-
-def print_f3() -> None:
-    global f3
-    sys.stdout.write(
-        f"\rF3 Data - X: {f3['x']:.2f}, Y: {f3['y']:.2f}, Z: {f3['z']:.2f}, "
-        f"Yaw: {f3['yaw']:.2f}, Pitch: {f3['pitch']:.2f}"
-    )
-    sys.stdout.flush()
-
 def start(conn: Connection) -> None:
     read_file()
-    conn.register_packet_listener(handle_f3, PositionAndLookPacket)
+    handle(conn)
     threading.Thread(target=save_file_thread, daemon=True).start()
     print("Agent started successfully.")
     try:

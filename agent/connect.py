@@ -25,7 +25,7 @@ def connect() -> None:
     conn.connect()
     conn.register_packet_listener(handle_disconnect, DisconnectPacket)
     conn.exception_handler = handle_exception
-    print(f"Connected to server {info['server']}:{info['port']} as {info['username']}")
+    print(f"Connecting to server {info['server']}:{info['port']} as {info['username']}...")
     
     try:
         start(conn)
