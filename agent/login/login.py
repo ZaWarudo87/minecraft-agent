@@ -1,18 +1,26 @@
 import json
 import os
 import requests
-
-from msal import PublicClientApplication
+import urllib.parse
+import webbrowser
 
 def main():
-    xbox_client_id = "00000000402b5328"  # Xbox Live client ID
-    authority = "https://login.microsoftonline.com/consumers"
-    app = PublicClientApplication(xbox_client_id, authority=authority)
-    links = app.initiate_device_flow(scopes=["user.read"])
-    print(f"flow: {links}")
-    print(f"Please visit {links['verification_uri']} and enter the code: {links['user_code']}")
-    result = app.acquire_token_by_device_flow(links)
-    MOAuth_token = result["access_token"]
+    auth_url = "https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&redirect_uri=https://login.live.com/oauth20_desktop.srf&scope=XboxLive.signin offline_access"
+    webbrowser.open(auth_url)
+    print("Please paste the full URL you were redirected to after logging in.")
+    redirect_url = input("Redirect URL: ").strip()
+    parsed_url = urllib.parse.urlparse(redirect_url)
+    MOAuth_code = urllib.parse.parse_qs(parsed_url.query).get("code", [None])[0]
+
+    token_url = "https://login.live.com/oauth20_token.srf"
+    token_response = requests.post(token_url, data={
+        "client_id": "00000000402b5328",
+        "redirect_uri": "https://login.live.com/oauth20_desktop.srf",
+        "grant_type": "authorization_code",
+        "code": MOAuth_code,
+        "scope": "XboxLive.signin offline_access"
+    }).json()
+    MOAuth_token = token_response["access_token"]
 
     xbl_response = requests.post(
         "https://user.auth.xboxlive.com/user/authenticate",
@@ -52,16 +60,28 @@ def main():
         headers={"Content-Type": "application/json"}
     ).json()
     access_token = mc_auth_response["access_token"]
-    username = mc_auth_response["username"]
+    weird_username = mc_auth_response["username"]
+    
+    profile_response = requests.get(
+        "https://api.minecraftservices.com/minecraft/profile",
+        headers={"Authorization": f"Bearer {access_token}"}
+    ).json()
+    username = profile_response["name"]
+    user_id = profile_response["id"]
+    if not access_token or not username:
+        print("Login failed. Please check your credentials and try again.")
+        return
 
-    print(f"Login successful!\n\tAccess Token: {access_token}\n\tUsername: {username}\nThis will be saved to info.json.")
+    print(f"Login successful!\nUsername: {username}\nThis will be saved to info.json.")
 
     now_dir = os.path.dirname(__file__)
     info_path = os.path.join(now_dir, "info.json")
     with open(info_path, "r", encoding="utf-8") as f:
         info = json.load(f)
-    info["auth_token"] = access_token
+    info["access_token"] = access_token
     info["username"] = username
+    info["id"] = user_id
+    info["weird_username"] = weird_username
 
     with open(info_path, "w", encoding="utf-8") as f:
         json.dump(info, f, indent=4)

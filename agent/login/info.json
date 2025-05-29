@@ -2,5 +2,7 @@
     "server": "localhost",
     "port": 25565,
     "username": "",
-    "auth_token": ""
+    "access_token": "",
+    "id": "",
+    "weird_username": ""
 }

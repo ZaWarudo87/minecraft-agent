@@ -1,12 +1,25 @@
-from minecraft_data.v1_20 import blocks, entities
+from minecraft.authentication import AuthenticationToken
+from minecraft.exceptions import YggdrasilError
 
-# 所有方塊 ID 與名稱
-block_ids = blocks.blocks_by_id
-block_names = blocks.blocks_by_name
+def login_to_minecraft():
+    print("=== Minecraft Login ===")
+    username = input("Enter your Mojang account email/username: ")
+    password = input("Enter your password: ")
 
-# 所有實體 ID 與名稱
-entity_ids = entities.entities_by_id
-entity_names = entities.entities_by_name
+    token = AuthenticationToken()
 
-print(block_names.keys())   # 印出所有可識別的方塊名稱
-print(entity_names.keys())  # 印出所有可識別的生物名稱
+    # try:
+    #     success = token.authenticate(username, password)
+    #     if success:
+    #         print(f"Login successful!")
+    #         print(f"Username: {token.profile.name}")
+    #         print(f"UUID: {token.profile.id_}")
+    #         print(f"Access Token: {token.access_token}")
+    #         print(f"Client Token: {token.client_token}")
+    #     else:
+    #         print("Login failed for unknown reasons.")
+    # except YggdrasilError as e:
+    #     print(f"Login failed with error: {e}")
+
+if __name__ == "__main__":
+    login_to_minecraft()
