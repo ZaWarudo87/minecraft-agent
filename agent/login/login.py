@@ -4,7 +4,7 @@ import requests
 import urllib.parse
 import webbrowser
 
-def main():
+def main() -> None:
     auth_url = "https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&redirect_uri=https://login.live.com/oauth20_desktop.srf&scope=XboxLive.signin offline_access"
     webbrowser.open(auth_url)
     print("Please paste the full URL you were redirected to after logging in.")
