@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import time
 import urllib.parse
 import webbrowser
 
@@ -85,6 +86,7 @@ def main():
 
     with open(info_path, "w", encoding="utf-8") as f:
         json.dump(info, f, indent=4)
+    time.sleep(1)
 
 if __name__ == "__main__":
     main()

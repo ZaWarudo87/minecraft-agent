@@ -1,16 +1,13 @@
-import csv
 import json
 import os
-import threading
-import time
+# import time
 
 from minecraft.authentication import AuthenticationToken
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, DisconnectPacket
-from minecraft.networking.packets.clientbound.play import JoinGamePacket, PlayerListItemPacket, SpawnPlayerPacket, PlayerPositionAndLookPacket, EntityPositionDeltaPacket, ChatMessagePacket
-from minecraft.networking.packets.serverbound.play import PositionAndLookPacket, TeleportConfirmPacket
 
 from .login import login
+from .agent import start
 
 now_dir = os.path.dirname(__file__)
 with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
@@ -31,8 +28,9 @@ def connect() -> None:
     print(f"Connected to server {info['server']}:{info['port']} as {info['username']}")
     
     try:
-        while True:
-            time.sleep(1)
+        start(conn)
+        # while True:
+        #     time.sleep(1)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
         conn.disconnect()
@@ -42,7 +40,7 @@ def connect() -> None:
         relogin()
 
 def relogin() -> None:
-    if input("Do you want to login? (y/n): ").strip().lower() == 'y':
+    if input("Do you want to re-login? (y/n): ").strip().lower() == 'y':
         login.main()
         with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
             global info
@@ -57,15 +55,11 @@ def handle_exception(pkt: Packet) -> None:
     print(f"Exception occurred: {pkt.exception}")
     relogin()
 
-def main() -> None:
+if __name__ == "__main__":
     try:
         connect()
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
-        return
     except Exception as e:
         print(f"Error connecting to server: {e}")
         relogin()
-
-if __name__ == "__main__":
-    main()

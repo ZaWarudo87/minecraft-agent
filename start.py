@@ -1,7 +1,8 @@
 import json
 import subprocess
 
-from agent import run
+from agent import connect
+from agent.login import login
 
 if __name__ == "__main__":
     print("This agent can only play in Minecraft Java Edition v1.18.1 or 1.18.")
@@ -26,5 +27,9 @@ if __name__ == "__main__":
     with open("agent/login/info.json", "w", encoding="utf-8") as f:
         json.dump(info, f, indent=4)
 
+    print(f"This is your account information:\n\tUsername: {info['username']}\n\tUUID: {info['id']}\n\tAccess Token: {info['access_token']}")
+    if input("Do you need to login? (y/n): ").strip().lower() == 'y':
+        login.main()
+
     print("Starting the agent...")
-    run.main()
+    connect.connect()

@@ -2,6 +2,8 @@ import csv
 import json
 import os
 
+now_dir = os.path.dirname(__file__)
+
 def init_h_block() -> None:
     dir = ["W", "WA", "A", "AS", "S", "SD", "D", "DW"]
     act = ["jump", "sneak"]
@@ -11,7 +13,7 @@ def init_h_block() -> None:
     for i in range(3):
         act.append(f"break_{i}")
 
-    with open("MCdata/blocks.json", "r", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, "MCdata/blocks.json"), "r", encoding="utf-8") as f:
         fin = json.load(f)
     block = []
     for i in fin:
@@ -21,7 +23,7 @@ def init_h_block() -> None:
             "name": i["name"]
         })
     
-    with open("heuristic_block.csv", "w", newline="") as f:
+    with open(os.path.join(now_dir, "heuristic_block.csv"), "w", newline="") as f:
         fout = csv.writer(f)
         fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
         for i in act:
@@ -29,7 +31,7 @@ def init_h_block() -> None:
                 fout.writerow([i, j["minStateId"], j["maxStateId"], j["name"], 0])
 
 def init_h_entity() -> None:
-    with open("MCdata/entities.json", "r", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, "MCdata/entities.json"), "r", encoding="utf-8") as f:
         fin = json.load(f)
     entity = []
     for i in fin:
@@ -38,14 +40,14 @@ def init_h_entity() -> None:
             "name": i["name"]
         })
     
-    with open("heuristic_entity.csv", "w", newline="") as f:
+    with open(os.path.join(now_dir, "heuristic_entity.csv"), "w", newline="") as f:
         fout = csv.writer(f)
         fout.writerow(["entity_id", "entity_name", "killable", "score"])
         for i in entity:
             fout.writerow([i["id"], i["name"], 0, 0])
 
 def init_rarity() -> None:
-    with open("MCdata/items.json", "r", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, "MCdata/items.json"), "r", encoding="utf-8") as f:
         fin = json.load(f)
     item = []
     for i in fin:
@@ -54,28 +56,28 @@ def init_rarity() -> None:
             "name": i["name"]
         })
     
-    with open("item_rarity.csv", "w", newline="") as f:
+    with open(os.path.join(now_dir, "item_rarity.csv"), "w", newline="") as f:
         fout = csv.writer(f)
         fout.writerow(["item_id", "item_name", "rarity"])
         for i in item:
             fout.writerow([i["id"], i["name"], 0])
 
 if __name__ == "__main__":
-    if not os.path.exists("heuristic_block.csv"):
+    if not os.path.exists(os.path.join(now_dir, "heuristic_block.csv")):
         print("Initializing heuristic block data...")
         init_h_block()
         print("Heuristic block data initialized.")
     else:
         print("Heuristic block data already exists.")
 
-    if not os.path.exists("heuristic_entity.csv"):
+    if not os.path.exists(os.path.join(now_dir, "heuristic_entity.csv")):
         print("Initializing heuristic entity data...")
         init_h_entity()
         print("Heuristic entity data initialized.")
     else:
         print("Heuristic entity data already exists.")
 
-    if not os.path.exists("item_rarity.csv"):
+    if not os.path.exists(os.path.join(now_dir, "item_rarity.csv")):
         print("Initializing item rarity data...")
         init_rarity()
         print("Item rarity data initialized.")
