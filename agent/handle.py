@@ -2,6 +2,7 @@ import json
 import os
 import sys
 
+from mcrcon import MCRcon
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets.clientbound.play import (
     JoinGamePacket,
@@ -53,6 +54,13 @@ def handle_test(pkt: SpawnPlayerPacket) -> None:
 
 def handle_join(pkt: JoinGamePacket):
     print(f"Connected. Entity ID: {pkt.entity_id}")
+    try:
+        with MCRcon(info["server"], "doggybot", port=25575) as mcr:
+            response = mcr.command(f"gamemode spectator {info["username"]}")
+            print(f"RCON Response: {response}")
+    except Exception as e:
+        print(f"Error connecting to RCON: {e}")
+        print(f"Remember to set 'gamemode spectator {info["username"]}' in the server.")
 
 def handle_player_list(pkt: PlayerListItemPacket) -> None:
     global connected, player_list

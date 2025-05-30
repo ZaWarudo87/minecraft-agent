@@ -12,9 +12,9 @@ key_set = {
 layout = [
     [     "", "1", "2", "3", "4", "5"],
     ["shift",  "",  "", "w",  "",  "",   "ml",   "mr"],
-    [ "ctrl",  "", "a", "s", "d",  "", "[__]", "mv: "]
+    [ "ctrl",  "", "a", "s", "d",  "", "[__]", "(0, 0)"]
 ]
-bef_mouse_x = 0
+bef_mouse = {"x": 0, "y": 0}
 
 def get_key(key) -> str:
     try:
@@ -50,11 +50,9 @@ def on_click(x, y, button, pressed) -> None:
             gui[k].config(bg="lightgray")
 
 def on_move(x, y) -> None:
-    global bef_mouse_x
-    dx = x - bef_mouse_x
-    dir = [["", "<-"][dx < -3], "->"][dx > 3]
-    gui["mouse_move"].config(text=f"MV: {dir}")
-    bef_mouse_x = x
+    gui["mouse_move"].config(text=f"({x - bef_mouse["x"]}, {y - bef_mouse['y']})")
+    bef_mouse["x"] = x
+    bef_mouse["y"] = y
 
 def kb_listen() -> None:
     screen = tk.Tk()
@@ -69,7 +67,7 @@ def kb_listen() -> None:
             if key:
                 lbl = tk.Label(frame, text=key.upper(), width=6, height=2, font=("Arial", 14), bg="lightgray")
                 lbl.grid(row=row, column=col, padx=5, pady=5)
-                gui[[[[[key, "mouse_move"][key == "mv: "], "space"][key == "[__]"], "mouse_right"][key == "mr"], "mouse_left"][key == "ml"]] = lbl
+                gui[[[[[key, "mouse_move"][key == "(0, 0)"], "space"][key == "[__]"], "mouse_right"][key == "mr"], "mouse_left"][key == "ml"]] = lbl
             else:
                 tk.Label(frame, text="", width=6, height=2).grid(row=row, column=col, padx=5, pady=5)
 

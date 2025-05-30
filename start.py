@@ -7,12 +7,23 @@ from agent.login import login
 if __name__ == "__main__":
     print("This agent can only play in Minecraft Java Edition v1.18.1 or 1.18.")
 
+    with open("agent/login/info.json", "r", encoding="utf-8") as f:
+        info = json.load(f)
+    print("This is an account information:")
+    print(f"\tUsername     : {info["username"]}")
+    print(f"\tUUID         : {info["id"]}")
+    print(f"\tAccess Token : {info["access_token"]}")
+    print("This account is used to connect to the server and get world packets.")
+    print("THIS ACCOUNT MUST **NOT** BE THE SAME AS THE ONE THE AGENT WILL USE LATER.")
+    if input("Do you need to login for this account? (y/n): ").strip().lower() == 'y':
+        login.main()
+
     if input("Do you want to build a new Minecraft server here? (y/n): ").strip().lower() == 'y':
         subprocess.Popen(["cmd.exe", "/c", "start", "start_server.bat"], cwd="server")
         print("Minecraft server started.")
+    else:
+        print(f"Remember to set 'gamemode spectator {info["username"]}' in the server.")
 
-    with open("agent/login/info.json", "r", encoding="utf-8") as f:
-        info = json.load(f)
     server = input(f"Enter the server address (default: {info["server"]}): ").strip()
     if not server:
         server = info["server"]
@@ -24,15 +35,6 @@ if __name__ == "__main__":
     else:
         port = int(port)
         info["port"] = port
-
-    print("This is an account information:")
-    print(f"\tUsername     : {info["username"]}")
-    print(f"\tUUID         : {info["id"]}")
-    print(f"\tAccess Token : {info["access_token"]}")
-    print("This account is used to connect to the server and get world packets.")
-    print("THIS ACCOUNT MUST **NOT** BE THE SAME AS THE ONE THE AGENT WILL USE LATER.")
-    if input("Do you need to login for this account? (y/n): ").strip().lower() == 'y':
-        login.main()
 
     agent_name = input(f"The account that will be controlled by the agent (default: {info["agent_name"]}): ").strip()
     if not agent_name:
