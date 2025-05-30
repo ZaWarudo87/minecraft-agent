@@ -24,12 +24,28 @@ if __name__ == "__main__":
     else:
         port = int(port)
         info["port"] = port
-    with open("agent/login/info.json", "w", encoding="utf-8") as f:
-        json.dump(info, f, indent=4)
 
-    print(f"This is your account information:\n\tUsername: {info['username']}\n\tUUID: {info['id']}\n\tAccess Token: {info['access_token']}")
-    if input("Do you need to login? (y/n): ").strip().lower() == 'y':
+    print("This is an account information:")
+    print(f"\tUsername     : {info["username"]}")
+    print(f"\tUUID         : {info["id"]}")
+    print(f"\tAccess Token : {info["access_token"]}")
+    print("This account is used to connect to the server and get world packets.")
+    print("THIS ACCOUNT MUST **NOT** BE THE SAME AS THE ONE THE AGENT WILL USE LATER.")
+    if input("Do you need to login for this account? (y/n): ").strip().lower() == 'y':
         login.main()
 
+    agent_name = input(f"The account that will be controlled by the agent (default: {info["agent_name"]}): ").strip()
+    if not agent_name:
+        agent_name = info["agent_name"]
+    else:
+        info["agent_name"] = agent_name
+    master_name = input(f"The player that the agent will follow (default: {info["master_name"]}): ").strip()
+    if not master_name:
+        master_name = info["master_name"]
+    else:
+        info["master_name"] = master_name
+    with open("agent/login/info.json", "w", encoding="utf-8") as f:
+        json.dump(info, f, indent=4)
+    print(f"Please start Minecraft and connect to the server with the account '{agent_name}'. Ask '{master_name}' to join as well.")
     print("Starting the agent...")
     connect.connect()

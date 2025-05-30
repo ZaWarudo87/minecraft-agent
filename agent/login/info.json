@@ -1,8 +1,10 @@
 {
     "server": "localhost",
     "port": 25565,
-    "username": "",
     "access_token": "",
+    "username": "",
     "id": "",
-    "weird_username": ""
+    "weird_username": "",
+    "agent_name": "Kurosaki0719",
+    "master_name": ""
 }

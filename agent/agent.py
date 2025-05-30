@@ -3,15 +3,19 @@ import os
 import threading
 import time
 
+import pygetwindow as gw
 from sortedcontainers import SortedKeyList
 from minecraft.networking.connection import Connection
 
+from .handle import *
 from .move import *
+from .keyboard_listener import *
 
 now_dir = os.path.dirname(__file__)
 heuristic_block = {}
 heuristic_entity = {}
 item_rarity = {}
+ctrl_agent = False
 
 def read_file() -> None:
     global heuristic_block, heuristic_entity, item_rarity
@@ -78,13 +82,46 @@ def save_file_thread() -> None:
         save_file()
         print("Heuristic data auto-saved.")
 
+def check_window() -> None:
+    global ctrl_agent
+    while True:
+        bef = ctrl_agent
+        try:
+            window = gw.getWindowsWithTitle("Minecraft 1.18")[0]
+            ctrl_agent = connected and not (window.isMinimized or not window.isVisible)
+        except IndexError:
+            ctrl_agent = False
+        except Exception as e:
+            ctrl_agent = False
+            print(f"Error checking Minecraft window: {e}")
+            break
+
+        if bef != ctrl_agent:
+            if ctrl_agent:
+                print("Minecraft window is active, agent control enabled.")
+            else:
+                print("Minecraft window is not active, agent control disabled.")
+        time.sleep(1)
+
 def start(conn: Connection) -> None:
     read_file()
     handle(conn)
     threading.Thread(target=save_file_thread, daemon=True).start()
+    print("Packet catcher started, waiting for starting Minecraft...")
+    while True:
+        window = gw.getWindowsWithTitle("Minecraft 1.18")
+        if window and connected:
+            kb_listen()
+            threading.Thread(target=check_window, daemon=True).start()
+            window[0].activate()
+            break
+        time.sleep(1)
     print("Agent started successfully.")
+    
     try:
         while True:
+            while not ctrl_agent:
+                time.sleep(1)
             time.sleep(1)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
