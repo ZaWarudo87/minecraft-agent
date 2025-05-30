@@ -54,6 +54,12 @@ def on_move(x, y) -> None:
     bef_mouse["x"] = x
     bef_mouse["y"] = y
 
+def game_test() -> bool:
+    test_mouse = mouse.Controller()
+    befx, befy = test_mouse.position
+    test_mouse.move(100, 100)
+    return abs(test_mouse.position[0] - befx) < 10 and abs(test_mouse.position[1] - befy) < 10
+
 def kb_listen() -> None:
     screen = tk.Tk()
     screen.title("Keyboard Listener")

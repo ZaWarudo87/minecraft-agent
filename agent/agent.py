@@ -1,24 +1,28 @@
 import csv
+import json
 import os
 import threading
 import time
 
 import pygetwindow as gw
 from sortedcontainers import SortedKeyList
+from minecraft.authentication import AuthenticationToken
 from minecraft.networking.connection import Connection
 
-from .handle import *
-from .move import *
-from .keyboard_listener import *
+from . import handle
+from . import move
+from . import keyboard_listener as kbl
 
 now_dir = os.path.dirname(__file__)
 heuristic_block = {}
 heuristic_entity = {}
 item_rarity = {}
+info = {}
 ctrl_agent = False
+connect = None
 
 def read_file() -> None:
-    global heuristic_block, heuristic_entity, item_rarity
+    global heuristic_block, heuristic_entity, item_rarity, info
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "r", encoding="utf-8") as f:
         fin = csv.reader(f)
         for i in fin:
@@ -57,9 +61,12 @@ def read_file() -> None:
                 "item_name": i[1],
                 "rarity": int(i[2])
             }
+
+    with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
+        info = json.load(f)
     print("Heuristic data loaded successfully.")
 
-def save_file() -> None:
+def save_file(get_token: bool = True) -> None:
     global heuristic_block, heuristic_entity, item_rarity
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
@@ -74,6 +81,11 @@ def save_file() -> None:
         fout.writerow(["entity_id", "entity_name", "killable", "score"])
         for entity_id, entity_data in heuristic_entity.items():
             fout.writerow([entity_id, entity_data["entity_name"], int(entity_data["killable"]), entity_data["score"]])
+
+    if get_token:
+        with open(os.path.join(now_dir, "login/info.json"), "w", encoding="utf-8") as f:
+            info["access_token"] = connect.auth_token.access_token
+            json.dump(info, f, indent=4)
     print("Heuristic data saved successfully.")
 
 def save_file_thread() -> None:
@@ -88,7 +100,7 @@ def check_window() -> None:
         bef = ctrl_agent
         try:
             window = gw.getWindowsWithTitle("Minecraft 1.18")[0]
-            ctrl_agent = connected and not (window.isMinimized or not window.isVisible)
+            ctrl_agent = handle.connected and not window.isMinimized and window.isActive
         except IndexError:
             ctrl_agent = False
         except Exception as e:
@@ -98,26 +110,31 @@ def check_window() -> None:
 
         if bef != ctrl_agent:
             if ctrl_agent:
+                if not kbl.game_test():
+                    move.back_to_game()
                 print("Minecraft window is active, agent control enabled.")
             else:
                 print("Minecraft window is not active, agent control disabled.")
         time.sleep(1)
 
 def start(conn: Connection) -> None:
+    global connect
+    connect = conn
     read_file()
-    handle(conn)
+    handle.handle(conn)
     threading.Thread(target=save_file_thread, daemon=True).start()
-    print("Packet catcher started, waiting for starting Minecraft...")
+    print("**Packet catcher started, waiting for starting Minecraft...**")
     while True:
         window = gw.getWindowsWithTitle("Minecraft 1.18")
-        if window and connected:
-            kb_listen()
+        if window and handle.connected:
+            threading.Thread(target=kbl.kb_listen, daemon=True).start()
             threading.Thread(target=check_window, daemon=True).start()
+            window[0].restore()
             window[0].activate()
             break
         time.sleep(1)
     print("Agent started successfully.")
-    
+
     try:
         while True:
             while not ctrl_agent:
@@ -125,7 +142,7 @@ def start(conn: Connection) -> None:
             time.sleep(1)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
-        save_file()
+        save_file(False)
         conn.disconnect()
 
 if __name__ == "__main__":

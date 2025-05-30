@@ -67,9 +67,11 @@ def handle_player_list(pkt: PlayerListItemPacket) -> None:
     for action in pkt.actions:
         if isinstance(action, PlayerListItemPacket.AddPlayerAction):
             player_list[action.name] = action.uuid
+            print(f"Player {action.name} added with UUID {action.uuid}")
             if action.name == info["agent_name"]:
                 connected = True
         elif isinstance(action, PlayerListItemPacket.RemovePlayerAction):
+            print(f"Player {action.name} left with UUID {action.uuid}")
             if action.name in player_list:
                 del player_list[action.name]
             if action.name == info["agent_name"]:
@@ -79,6 +81,7 @@ def handle(conn: Connection) -> None:
     conn.register_packet_listener(handle_f3, PlayerPositionAndLookPacket)
     #conn.register_packet_listener(handle_test, SpawnPlayerPacket)
     conn.register_packet_listener(handle_join, JoinGamePacket)
+    conn.register_packet_listener(handle_player_list, PlayerListItemPacket)
 
 if __name__ == "__main__":
     print("Please connect to a server first.")
