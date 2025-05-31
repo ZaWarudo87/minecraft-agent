@@ -15,7 +15,11 @@ def init_h_block() -> None:
 
     with open(os.path.join(now_dir, "MCdata/blocks.json"), "r", encoding="utf-8") as f:
         fin = json.load(f)
-    block = []
+    block = [{
+        "minStateId": -1,
+        "maxStateId": -1,
+        "name": "unknown"
+    }]
     for i in fin:
         block.append({
             "minStateId": i["minStateId"],

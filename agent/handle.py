@@ -15,15 +15,17 @@ from minecraft.networking.packets.clientbound.play import (
     EntityLookPacket,
     EntityPositionDeltaPacket,
     JoinGamePacket,
+    MultiBlockChangePacket,
     PlayerListItemPacket,
     PlayerPositionAndLookPacket,
+    SoundEffectPacket,
     SpawnPlayerPacket,
 )
 from minecraft.networking.packets.serverbound.play import (
     PositionAndLookPacket,
 )
 
-from . import mc_cmd
+from . import mc
 
 connected = False
 f3 = {}
@@ -53,35 +55,7 @@ def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
 
 def handle_self_pos(pkt: PlayerPositionAndLookPacket):
     global my_coor
-    print(f"Self Position - X: {pkt.x:.2f}, Y: {pkt.y:.2f}, Z: {pkt.z:.2f}")
     my_coor = {"x": pkt.x, "y": pkt.y, "z": pkt.z}
-
-def handle_test(pkt: Packet) -> None:
-    pkt_name = pkt.__class__.__name__
-    lint_off = [
-        "Packet",
-        "BlockChangePacket",
-        "ChatMessagePacket",
-        "EncryptionRequestPacket",
-        "EntityPositionDeltaPacket", 
-        "EntityVelocityPacket", 
-        "EntityLookPacket",
-        "JoinGamePacket",
-        "KeepAlivePacket",
-        "LoginSuccessPacket",
-        "PlayerPositionAndLookPacket",
-        "PlayerListItemPacket",
-        "PluginMessagePacket",
-        "ResponsePacket",
-        "ServerDifficultyPacket",
-        "SetCompressionPacket",
-        "SpawnObjectPacket",
-        "SpawnPlayerPacket",
-        "TimeUpdatePacket",
-        "UpdateHealthPacket",
-    ]
-    if pkt_name not in lint_off:
-        print(f"[ALL] {pkt_name}")
 
 def handle_join(pkt: JoinGamePacket):
     print(f"Connected. Entity ID: {pkt.entity_id}")
@@ -124,19 +98,20 @@ def handle_look(pkt: EntityLookPacket) -> None:
 
 def handle_chat(pkt: ChatMessagePacket) -> None:
     payload = pkt.json_data
-    cmdt, text = mc_cmd.decode(payload)
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        payload = json.loads(payload)
-    with open(os.path.join(now_dir, "other/chat_log.json"), "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=4, ensure_ascii=False)
-    with open(os.path.join(now_dir, "other/chat_log.txt"), "w", encoding="utf-8") as f:
-        f.write(text)
-    print(f"Chat message received and logged: {cmdt}")
+    cmdt, text = mc.decode(payload)
+    #print(f"Chat message received and logged: {cmdt}")
 
 def handle_block(pkt: BlockChangePacket) -> None:
-    print(f"Block changed at ({pkt.location.x}, {pkt.location.y}, {pkt.location.z}) to {pkt.block_state_id}")
+    mc.set_block(pkt.location.x, pkt.location.y, pkt.location.z, pkt.block_state_id)
+
+def handle_chunk(pkt: MultiBlockChangePacket) -> None:
+    bx = pkt.chunk_section_pos.x * 16
+    bz = pkt.chunk_section_pos.x * 16
+    for i in pkt.records:
+        mc.set_block(bx + i.x, i.y, bz + i.z, i.block_state_id)
+
+def handle_sound(pkt: SoundEffectPacket) -> None:
+    print(f"Sound effect received: {pkt.sound_id} in {pkt.sound_category} at {pkt.effect_position} with volume {pkt.volume} and pitch {pkt.pitch}")
 
 def update_coor() -> Table:
     global f3
@@ -147,6 +122,7 @@ def update_coor() -> Table:
     coor_table.add_column("Z")
     coor_table.add_column("Yaw")
     coor_table.add_column("Pitch")
+    coor_table.add_column("block")
 
     for k, v in f3.items():
         coor_table.add_row(
@@ -155,7 +131,8 @@ def update_coor() -> Table:
             f"{v['y']:.2f}",
             f"{v['z']:.2f}",
             f"{v['yaw']:.2f}",
-            f"{v['pitch']:.2f}"
+            f"{v['pitch']:.2f}",
+            mc.get_block_name(mc.get_block(int(v['x']), int(v['y'] - 1), int(v['z'])))
         )
     return coor_table
 
@@ -216,9 +193,40 @@ def handle(conn: Connection) -> None:
     conn.register_packet_listener(handle_self_pos, PlayerPositionAndLookPacket)
     conn.register_packet_listener(handle_chat, ChatMessagePacket)
     conn.register_packet_listener(handle_block, BlockChangePacket)
+    conn.register_packet_listener(handle_chunk, MultiBlockChangePacket)
+    #conn.register_packet_listener(handle_sound, SoundEffectPacket)
 
     threading.Thread(target=print_f3, daemon=True).start()
     threading.Thread(target=keep_around, daemon=True).start()
+
+def handle_test(pkt: Packet) -> None:
+    pkt_name = pkt.__class__.__name__
+    lint_off = [
+        "Packet",
+        "BlockChangePacket",
+        "ChatMessagePacket",
+        "EncryptionRequestPacket",
+        "EntityPositionDeltaPacket", 
+        "EntityVelocityPacket", 
+        "EntityLookPacket",
+        "JoinGamePacket",
+        "KeepAlivePacket",
+        "LoginSuccessPacket",
+        "MultiBlockChangePacket",
+        "PlayerPositionAndLookPacket",
+        "PlayerListItemPacket",
+        "PluginMessagePacket",
+        "ResponsePacket",
+        "ServerDifficultyPacket",
+        "SetCompressionPacket",
+        "SoundEffectPacket",
+        "SpawnObjectPacket",
+        "SpawnPlayerPacket",
+        "TimeUpdatePacket",
+        "UpdateHealthPacket",
+    ]
+    if pkt_name not in lint_off:
+        print(f"[ALL] {pkt_name}")
 
 if __name__ == "__main__":
     print("Please connect to a server first.")

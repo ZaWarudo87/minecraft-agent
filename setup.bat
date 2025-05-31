@@ -25,7 +25,7 @@ if errorlevel 1 (
 
 REM pip modules
 python -m pip install --upgrade pip
-pip install requests colorama pyNBT cryptography mcstatus msal sortedcontainers pynput pygetwindow mcrcon rich
+pip install requests colorama pyNBT cryptography mcstatus msal sortedcontainers pynput pygetwindow mcrcon rich nbtlib
 pip install git+https://github.com/ammaraskar/pyCraft.git
 
 echo Setup finished. :D

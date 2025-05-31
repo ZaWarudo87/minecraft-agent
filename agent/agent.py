@@ -5,16 +5,17 @@ import threading
 import time
 
 import pygetwindow as gw
-from sortedcontainers import SortedKeyList
+from sortedcontainers import SortedKeyList, SortedDict
 from minecraft.authentication import AuthenticationToken
 from minecraft.networking.connection import Connection
 
 from . import handle
 from . import move
 from . import keyboard_listener as kbl
+from . import mc
 
 now_dir = os.path.dirname(__file__)
-heuristic_block = {}
+heuristic_block = SortedDict()
 heuristic_entity = {}
 item_rarity = {}
 info = {}
@@ -32,14 +33,13 @@ def read_file() -> None:
             if block_min not in heuristic_block:
                 heuristic_block[block_min] = {
                     "block_maxStateId": int(i[2]),
+                    "block_name": i[3],
                     "action": {}
                 }
-            heuristic_block[block_min]["action"][i[0]] = {
-                "block_name": i[3],
-                "score": int(i[4])
-            }
+            heuristic_block[block_min]["action"][i[0]] = int(i[4])
         for i in heuristic_block:
-            heuristic_block[i]["action"] = SortedKeyList(heuristic_block[i]["action"].items(), key=lambda x: -x[1]["score"])
+            heuristic_block[i]["action"] = SortedKeyList(heuristic_block[i]["action"].items(), key=lambda x: -x[1])
+        mc.load_block_name(heuristic_block)
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "r", encoding="utf-8") as f:
         fin = csv.reader(f)
@@ -72,9 +72,8 @@ def save_file(get_token: bool = True) -> None:
         fout = csv.writer(f)
         fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
         for block_min, block_data in heuristic_block.items():
-            block_max = block_data["block_maxStateId"]
             for action, data in block_data["action"]:
-                fout.writerow([action, block_min, block_max, data["block_name"], data["score"]])
+                fout.writerow([action, block_min, block_data["block_maxStateId"], block_data["block_name"], data])
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
@@ -86,6 +85,7 @@ def save_file(get_token: bool = True) -> None:
         with open(os.path.join(now_dir, "login/info.json"), "w", encoding="utf-8") as f:
             info["access_token"] = connect.auth_token.access_token
             json.dump(info, f, indent=4)
+    mc.save_block()
     print("Heuristic data saved successfully.")
 
 def save_file_thread() -> None:
