@@ -57,8 +57,8 @@ def read_file() -> None:
         for i in fin:
             if i[0] == "item_id":
                 continue
-            item_rarity[i[0]] = {
-                "item_name": i[1],
+            item_rarity[i[1]] = {
+                "item_id": i[0],
                 "rarity": int(i[2])
             }
 
@@ -116,6 +116,13 @@ def check_window() -> None:
             else:
                 print("Minecraft window is not active, agent control disabled.")
         time.sleep(1)
+
+def gain_item(item: dict) -> None:
+    score = 0
+    for k, v in item.items():
+        score += 2 ** item_rarity[k]["rarity"] * v
+    print(f"Score gained: {score}")
+    print(f"Item gained: {item}")
 
 def start(conn: Connection) -> None:
     global connect

@@ -6,13 +6,7 @@ from pynput.mouse import Button, Controller as MouseController
 
 kb = KeyboardController()
 mouse = MouseController()
-tool_num = {
-    "sword": 1,
-    "axe": 2,
-    "pickaxe": 3,
-    "shovel": 4,
-    "hoe": 5,
-}
+tool_num = {}
 
 user32 = ctypes.windll.user32 # Windows API for mouse input
 

@@ -1,6 +1,6 @@
 import json
+import math
 import os
-import re
 import threading
 import time
 from rich.live import Live
@@ -22,16 +22,19 @@ from minecraft.networking.packets.clientbound.play import (
     SpawnPlayerPacket,
 )
 from minecraft.networking.packets.serverbound.play import (
+    ChatPacket,
     PositionAndLookPacket,
 )
 
+from . import agent
 from . import mc
 
 connected = False
 f3 = {}
 player_list = {}
-my_coor = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+my_coor = {"x": 0.0, "y": 0.0, "z": 0.0}
 connect = None
+inv_ok = True
 
 now_dir = os.path.dirname(__file__)
 with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
@@ -47,12 +50,16 @@ def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
         "z": pkt.z,
         "yaw": pkt.yaw,
         "pitch": pkt.pitch,
-        "dx": 0.0,
-        "dy": 0.0,
-        "dz": 0.0
+        # "dx": 0.0,
+        # "dy": 0.0,
+        # "dz": 0.0,
+        "health": 20.0,
+        "hungry": 20,
+        "block": -1,
+        "pick": "none",
+        "item": {}
     }
-    print(f"{pkt.entity_id} - X: {pkt.x:.2f}, Y: {pkt.y:.2f}, Z: {pkt.z:.2f}, Yaw: {pkt.yaw:.2f}, Pitch: {pkt.pitch:.2f}")
-
+    
 def handle_self_pos(pkt: PlayerPositionAndLookPacket):
     global my_coor
     my_coor = {"x": pkt.x, "y": pkt.y, "z": pkt.z}
@@ -64,7 +71,6 @@ def handle_join(pkt: JoinGamePacket):
             response = mcr.command(f"op {info["username"]}")
             print(f"RCON Response: {response}")
         cmd("gamemode spectator")
-        cmd(f"data get entity {info["agent_name"]} Health")
     except Exception as e:
         print(f"Error connecting to RCON: {e}")
         print(f"Remember to set 'op {info["username"]}' in the server.")
@@ -97,9 +103,28 @@ def handle_look(pkt: EntityLookPacket) -> None:
         f3[pkt.entity_id]["pitch"] = pkt.pitch
 
 def handle_chat(pkt: ChatMessagePacket) -> None:
+    global f3, player_list
     payload = pkt.json_data
-    cmdt, text = mc.decode(payload)
-    #print(f"Chat message received and logged: {cmdt}")
+    cmdt, name, text = mc.decode(payload)
+    if cmdt == "commands.data.entity.query":
+        if name in player_list and player_list[name] in f3:
+            if isinstance(text, list) and len(text) == 3 and all(isinstance(i, float) for i in text):
+                f3[player_list[name]]["x"] = text[0]
+                f3[player_list[name]]["y"] = text[1]
+                f3[player_list[name]]["z"] = text[2]
+            elif isinstance(text, float) and text >= 0 and text <= 20:
+                f3[player_list[name]]["health"] = text
+            elif isinstance(text, int) and text >= 0 and text <= 20:
+                f3[player_list[name]]["hungry"] = text
+            elif isinstance(text, list) and len(text) > 0 and isinstance(text[0], dict) and "Slot" in text[0]:
+                if inv_ok:
+                    threading.Thread(target=update_item, args=(text,), daemon=True).start()
+            else:
+                print(f"Chat message received and logged: {cmdt} - {name} - {text}")
+        else:
+            print(f"Player {name} not found in player list or F3 data.")
+    else:
+        print(f"Chat message received and logged: {cmdt} - {name} - {text}")
 
 def handle_block(pkt: BlockChangePacket) -> None:
     mc.set_block(pkt.location.x, pkt.location.y, pkt.location.z, pkt.block_state_id)
@@ -122,17 +147,24 @@ def update_coor() -> Table:
     coor_table.add_column("Z")
     coor_table.add_column("Yaw")
     coor_table.add_column("Pitch")
-    coor_table.add_column("block")
+    coor_table.add_column("Health")
+    coor_table.add_column("Hungry")
+    coor_table.add_column("Block")
+    coor_table.add_column("Pick")
 
     for k, v in f3.items():
+        v["block"] = mc.get_block(math.floor(v["x"]), math.floor(v["y"]) - 1, math.floor(v["z"]))
         coor_table.add_row(
             str(k),
-            f"{v['x']:.2f}",
-            f"{v['y']:.2f}",
-            f"{v['z']:.2f}",
-            f"{v['yaw']:.2f}",
-            f"{v['pitch']:.2f}",
-            mc.get_block_name(mc.get_block(int(v['x']), int(v['y'] - 1), int(v['z'])))
+            f"{v["x"]:.2f}",
+            f"{v["y"]:.2f}",
+            f"{v["z"]:.2f}",
+            f"{v["yaw"]:.2f}",
+            f"{v["pitch"]:.2f}",
+            f"{v["health"]:.2f}",
+            f"{v["hungry"]}",
+            mc.get_block_name(v["block"]),
+            v["pick"]
         )
     return coor_table
 
@@ -140,13 +172,20 @@ def print_f3() -> None:
     with Live(update_coor(), refresh_per_second=10, screen=False) as live:
         while True:
             time.sleep(0.05)
+            if info["agent_name"] in player_list:
+                cmd(f"data get entity {info["agent_name"]} Pos")
+                cmd(f"data get entity {info["agent_name"]} Health")
+                cmd(f"data get entity {info["agent_name"]} foodLevel")
+                cmd(f"data get entity {info["agent_name"]} Inventory")
+            if info["master_name"] in player_list:
+                cmd(f"data get entity {info["master_name"]} Pos")
             live.update(update_coor())
 
 def keep_around() -> None:
     global connect, my_coor, f3, player_list, info, connected
     while True:
         if connected:
-            cmd(f"data get entity {info["agent_name"]}")
+            #cmd(f"data get entity {info["agent_name"]} Inventory")
             if info["agent_name"] in player_list:
                 speed = 1
                 while True:
@@ -180,6 +219,23 @@ def keep_around() -> None:
 def cmd(line: str) -> None:
     connect.write_packet(ChatPacket(message=f"/{line}"))
 
+def update_item(inv: list) -> None:
+    global f3, inv_ok
+    inv_ok = False
+    not_first = bool(f3[player_list[info["agent_name"]]]["item"])
+    diff = mc.get_item(inv, f3[player_list[info["agent_name"]]]["item"])
+    if diff:
+        for k, v in diff.items():
+            if k not in f3[player_list[info["agent_name"]]]["item"]:
+                f3[player_list[info["agent_name"]]]["item"][k] = v
+            else:
+                f3[player_list[info["agent_name"]]]["item"][k] += v
+            if v > 0:
+                f3[player_list[info["agent_name"]]]["pick"] = k
+        if not_first:
+            agent.gain_item(diff)
+    inv_ok = True
+
 def handle(conn: Connection) -> None:
     global connect
     connect = conn
@@ -188,7 +244,7 @@ def handle(conn: Connection) -> None:
     conn.register_packet_listener(handle_test, Packet)
     conn.register_packet_listener(handle_join, JoinGamePacket)
     conn.register_packet_listener(handle_player_list, PlayerListItemPacket)
-    conn.register_packet_listener(handle_delta, EntityPositionDeltaPacket)
+    #conn.register_packet_listener(handle_delta, EntityPositionDeltaPacket)
     conn.register_packet_listener(handle_look, EntityLookPacket)
     conn.register_packet_listener(handle_self_pos, PlayerPositionAndLookPacket)
     conn.register_packet_listener(handle_chat, ChatMessagePacket)

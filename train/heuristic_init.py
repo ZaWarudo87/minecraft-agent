@@ -6,11 +6,11 @@ now_dir = os.path.dirname(__file__)
 
 def init_h_block() -> None:
     dir = ["W", "WA", "A", "AS", "S", "SD", "D", "DW"]
-    act = ["jump", "sneak"]
+    act = ["jump", "sneak", "offset", "place"]
     for i in dir:
         act.append(f"walk_{i}")
         act.append(f"sprint_{i}")
-    for i in range(3):
+    for i in ["U", "UF", "F", "DF", "D"]:
         act.append(f"break_{i}")
 
     with open(os.path.join(now_dir, "MCdata/blocks.json"), "r", encoding="utf-8") as f:
