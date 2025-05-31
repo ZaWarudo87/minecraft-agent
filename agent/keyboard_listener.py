@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 from pynput import keyboard, mouse
 
@@ -5,12 +6,12 @@ pressed_key = set()
 gui = {}
 key_set = {
     "w", "a", "s", "d",
-    "1","2","3","4","5",
+    "1", "2", "3", "4", "5", "6",
     "space", "shift", "ctrl",
     "mouse_left", "mouse_right"
 }
 layout = [
-    [     "", "1", "2", "3", "4", "5"],
+    [     "", "1", "2", "3", "4", "5",    "6"],
     ["shift",  "",  "", "w",  "",  "",   "ml",   "mr"],
     [ "ctrl",  "", "a", "s", "d",  "", "[__]", "(0, 0)"]
 ]
@@ -55,6 +56,7 @@ def on_move(x, y) -> None:
     bef_mouse["y"] = y
 
 def game_test() -> bool:
+    time.sleep(0.5)
     test_mouse = mouse.Controller()
     befx, befy = test_mouse.position
     test_mouse.move(100, 100)

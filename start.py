@@ -22,7 +22,7 @@ if __name__ == "__main__":
         subprocess.Popen(["cmd.exe", "/c", "start", "start_server.bat"], cwd="server")
         print("Minecraft server started.")
     else:
-        print(f"Remember to set 'gamemode spectator {info["username"]}' in the server.")
+        print(f"Remember to set 'op {info["username"]}' in the server.")
 
     server = input(f"Enter the server address (default: {info["server"]}): ").strip()
     if not server:
