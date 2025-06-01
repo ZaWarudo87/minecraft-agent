@@ -34,7 +34,8 @@ f3 = {}
 player_list = {}
 my_coor = {"x": 0.0, "y": 0.0, "z": 0.0}
 connect = None
-inv_ok = True
+look_you = [False, False] # agent_look_master, master_look_agent
+receiving = False
 
 now_dir = os.path.dirname(__file__)
 with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
@@ -56,6 +57,7 @@ def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
         "health": 20.0,
         "hungry": 20,
         "block": -1,
+        "gaze": -1,
         "pick": "none",
         "item": {}
     }
@@ -117,9 +119,19 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
             elif isinstance(text, int) and text >= 0 and text <= 20:
                 f3[player_list[name]]["hungry"] = text
             elif isinstance(text, list) and len(text) > 0 and isinstance(text[0], dict) and "Slot" in text[0]:
-                if inv_ok:
-                    threading.Thread(target=update_item, args=(text,), daemon=True).start()
-            else:
+                not_first = bool(f3[player_list[info["agent_name"]]]["item"])
+                diff = mc.get_item(text, f3[player_list[info["agent_name"]]]["item"])
+                if diff:
+                    for k, v in diff.items():
+                        if k not in f3[player_list[info["agent_name"]]]["item"]:
+                            f3[player_list[info["agent_name"]]]["item"][k] = v
+                        else:
+                            f3[player_list[info["agent_name"]]]["item"][k] += v
+                        if v > 0:
+                            f3[player_list[info["agent_name"]]]["pick"] = k
+                    if not_first:
+                        agent.gain_item(diff)
+            elif text:
                 print(f"Chat message received and logged: {cmdt} - {name} - {text}")
         else:
             print(f"Player {name} not found in player list or F3 data.")
@@ -130,10 +142,15 @@ def handle_block(pkt: BlockChangePacket) -> None:
     mc.set_block(pkt.location.x, pkt.location.y, pkt.location.z, pkt.block_state_id)
 
 def handle_chunk(pkt: MultiBlockChangePacket) -> None:
+    #print(pkt)
+    global receiving
+    receiving = True
     bx = pkt.chunk_section_pos.x * 16
-    bz = pkt.chunk_section_pos.x * 16
+    by = pkt.chunk_section_pos.y * 16
+    bz = pkt.chunk_section_pos.z * 16
     for i in pkt.records:
-        mc.set_block(bx + i.x, i.y, bz + i.z, i.block_state_id)
+        mc.set_block(bx + i.x, by + i.y, bz + i.z, i.block_state_id)
+    receiving = False
 
 def handle_sound(pkt: SoundEffectPacket) -> None:
     print(f"Sound effect received: {pkt.sound_id} in {pkt.sound_category} at {pkt.effect_position} with volume {pkt.volume} and pitch {pkt.pitch}")
@@ -150,10 +167,12 @@ def update_coor() -> Table:
     coor_table.add_column("Health")
     coor_table.add_column("Hungry")
     coor_table.add_column("Block")
+    coor_table.add_column("Gaze")
     coor_table.add_column("Pick")
 
     for k, v in f3.items():
         v["block"] = mc.get_block(math.floor(v["x"]), math.floor(v["y"]) - 1, math.floor(v["z"]))
+        v["gaze"] = mc.get_gaze_block(v["x"], v["y"] + 1, v["z"], v["yaw"], v["pitch"], look_you)
         coor_table.add_row(
             str(k),
             f"{v["x"]:.2f}",
@@ -163,7 +182,8 @@ def update_coor() -> Table:
             f"{v["pitch"]:.2f}",
             f"{v["health"]:.2f}",
             f"{v["hungry"]}",
-            mc.get_block_name(v["block"]),
+            f"{mc.get_block_name(v["block"])}({v["block"]})",
+            f"{mc.get_block_name(v["gaze"])}({v["gaze"]})",
             v["pick"]
         )
     return coor_table
@@ -172,13 +192,14 @@ def print_f3() -> None:
     with Live(update_coor(), refresh_per_second=10, screen=False) as live:
         while True:
             time.sleep(0.05)
-            if info["agent_name"] in player_list:
-                cmd(f"data get entity {info["agent_name"]} Pos")
-                cmd(f"data get entity {info["agent_name"]} Health")
-                cmd(f"data get entity {info["agent_name"]} foodLevel")
-                cmd(f"data get entity {info["agent_name"]} Inventory")
-            if info["master_name"] in player_list:
-                cmd(f"data get entity {info["master_name"]} Pos")
+            if not receiving:
+                if info["agent_name"] in player_list:
+                    cmd(f"data get entity {info["agent_name"]} Pos")
+                    cmd(f"data get entity {info["agent_name"]} Health")
+                    cmd(f"data get entity {info["agent_name"]} foodLevel")
+                    cmd(f"data get entity {info["agent_name"]} Inventory")
+                if info["master_name"] in player_list:
+                    cmd(f"data get entity {info["master_name"]} Pos")
             live.update(update_coor())
 
 def keep_around() -> None:
@@ -218,23 +239,6 @@ def keep_around() -> None:
 
 def cmd(line: str) -> None:
     connect.write_packet(ChatPacket(message=f"/{line}"))
-
-def update_item(inv: list) -> None:
-    global f3, inv_ok
-    inv_ok = False
-    not_first = bool(f3[player_list[info["agent_name"]]]["item"])
-    diff = mc.get_item(inv, f3[player_list[info["agent_name"]]]["item"])
-    if diff:
-        for k, v in diff.items():
-            if k not in f3[player_list[info["agent_name"]]]["item"]:
-                f3[player_list[info["agent_name"]]]["item"][k] = v
-            else:
-                f3[player_list[info["agent_name"]]]["item"][k] += v
-            if v > 0:
-                f3[player_list[info["agent_name"]]]["pick"] = k
-        if not_first:
-            agent.gain_item(diff)
-    inv_ok = True
 
 def handle(conn: Connection) -> None:
     global connect
