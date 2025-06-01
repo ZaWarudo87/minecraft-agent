@@ -1,6 +1,7 @@
 """
 TODO
 - 完成 move.py, handle.py, mc.py 之後，取消 start(conn) 裡面的註解，並註解目前頂著的 time.sleep(1)
+- 附近生物影響判斷那些完全還沒寫
 """
 
 import csv
@@ -150,13 +151,24 @@ def check_window() -> None:
         time.sleep(1)
 
 def gain_item(item: dict) -> None:
+    global score_all, heuristic_block
     score = 0
     for k, v in item.items():
         score += 2 ** item_rarity[k]["rarity"] * v
-    print(f"Score gained: {score}")
+    if score > 0:
+        print(f"Score gained: {score}")
+        if last_op[0] and last_op[1]:
+            heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] += score
+            heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] += score
+            score_all += score
+
+def minus(s: int) -> None:
+    global score_all, heuristic_block
+    print(f"Score minus: {s}")
     if last_op[0] and last_op[1]:
-        heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] += score
-        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] += score
+        heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] -= s
+        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] -= s
+        score_all += s
 
 def dfs(x: float, y: float, z: float, sim: list = movement, dep: int = 3) -> tuple[list, int]:
     if dep <= 0:

@@ -119,13 +119,6 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
     global f3, player_list
     payload = pkt.json_data
     cmdt, name, text = mc.decode(payload) # command_type_NBT(?), possible_relative_player, result
-    # ------------------------------------------------------------------------------------------
-    # | TODO: 想辦法抓到agent的死亡訊息                                                          |
-    # |       要在../train/death_time.csv記錄死亡時間，存 world_time 進去就好了，反正大概長下面這樣 |
-    # ------------------------------------------------------------------------------------------
-    # with open(os.path.join(now_dir, "../train/death_time.csv"), "a", newline="", encoding="utf-8") as f:
-    #     csv.writer(f).writerow([world_time])
-
     # -----------------------------------------------------------------------------------------
     # | TODO: 想辦法接到你的指令回傳結果，並做出相應處理                                          |
     # |       指令執行結果的 text 只會有值本人而已，我也找不到辦法去抓到是哪條指令發出才得到這個結果 |
@@ -137,6 +130,8 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
                 f3[player_list[name]]["y"] = text[1]
                 f3[player_list[name]]["z"] = text[2]
             elif isinstance(text, float) and text >= 0 and text <= 20:
+                if text < f3[player_list[name]]["health"]:
+                    agent.minus(2 ** int((f3[player_list[name]]["health"] - text)) * int(20 - text))
                 f3[player_list[name]]["health"] = text
             elif isinstance(text, int) and text >= 0 and text <= 20:
                 f3[player_list[name]]["hungry"] = text
@@ -157,6 +152,13 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
                 print(f"Chat message received and logged: {cmdt} - {name} - {text}")
         else:
             print(f"Player {name} not found in player list or F3 data.")
+    elif "death" in cmdt and name == info["agent_name"]:
+        # ----------------------------------------
+        # | TODO: agent死亡時，請想辦法讓它自動復活 |
+        # ----------------------------------------
+        agent.minus(1024)
+        with open(os.path.join(now_dir, "../train/death_time.csv"), "a", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow([world_time])
     else:
         print(f"Chat message received and logged: {cmdt} - {name} - {text}")
 
