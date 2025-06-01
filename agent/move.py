@@ -1,12 +1,25 @@
+"""
+TODO
+- 完成 move(cmd)
+- 切視角請用 move_mouse_relative(dx, dy)，這邊不能用 MouseController，只有點擊時才行
+- switch_tool(tool) 可以切過去快捷欄裡面有的指定工具
+- 不建議直接拿 move 系列的函式使用
+- 經過實測，move_forward(0.2317) 可以往前走接近剛好一格，turn_right(0.105) 可以剛好把頭右轉接近45度
+"""
+
 import ctypes
 import time
 
 from pynput.keyboard import Key, Controller as KeyboardController
 from pynput.mouse import Button, Controller as MouseController
 
+from . import mc
+
 kb = KeyboardController()
 mouse = MouseController()
 tool_num = {}
+WALK_1_BLOCK = 0.2317
+TURN_45_DEG = 0.105
 
 user32 = ctypes.windll.user32 # Windows API for mouse input
 
@@ -42,6 +55,40 @@ def move_mouse_relative(dx: int, dy: int) -> None:
         )
     )
     ctypes.windll.user32.SendInput(1, ctypes.byref(ipt), ctypes.sizeof(ipt))
+
+def move(cmd: str) -> None:
+    # ------------------------------------------------------------------------------------------------------------------------------
+    # | TODO: 解析以下動作並執行之，如果能連續使用按鍵的話就不會放開，例如連續收到兩次"walk_W"時，中間不會放開w鍵                          |
+    # |       - "jump"                                                  // 跳起                                                    |
+    # |       - "sneak"                                                 // 蹲下，有其他動作後要自動解除                              |
+    # |       - "place"                                                 // 在自己腳下放置方塊（跳起來然後放）                         |
+    # |       - "walk_W", "sprint_W"                                    // 向 yaw = 0 的方向 [走, 跑] 前進                          |
+    # |       - "walk_WA", "sprint_WA"                                  // 向 yaw = -45 的方向 [走, 跑] 前進                        |
+    # |       - "walk_A", "sprint_A"                                    // 向 yaw = -90 的方向 [走, 跑] 前進                        |
+    # |       - "walk_AS", "sprint_AS"                                  // 向 yaw = -135 的方向 [走, 跑] 前進                       |
+    # |       - "walk_S", "sprint_S"                                    // 向 yaw = -180 的方向 [走, 跑] 前進                       |
+    # |       - "walk_SD", "sprint_SD"                                  // 向 yaw = 135 的方向 [走, 跑] 前進                        |
+    # |       - "walk_D", "sprint_D"                                    // 向 yaw = 90 的方向 [走, 跑] 前進                         |
+    # |       - "walk_DW", "sprint_DW"                                  // 向 yaw = 45 的方向 [走, 跑] 前進                         |
+    # |       - "break_U", "break_UF", "break_F", "break_DF", "break_D" // 選擇對應工具破壞 pitch = [-90, -45, 0, 45, 90] 瞄準的方塊 |
+    # |       然後還要想辦法能選到對應工具，switch_tool(tool) 可以切過去那樣工具（如果快捷欄裡面有的話）                                 |
+    # ------------------------------------------------------------------------------------------------------------------------------
+    return NotImplementedError
+
+def move_sim(x: float, y: float, z: float, cmd: str) -> tuple[float, float, float, int]:
+    # ----------------------------------------------------------------------------------------------------------------------------
+    # | TODO: 解析上述動作，並回傳若執行後會到的座標，以及腳下方塊的block_state_id會變成什麼，可用 mc.get_block(x, y, z) 取得，y記得減1 |
+    # ----------------------------------------------------------------------------------------------------------------------------
+    # return next_x, next_y, next_z, block_state_id
+    return NotImplementedError
+
+def switch_tool(tool: str, t: float = 0.1) -> None:
+    if tool in tool_num:
+        kb.press(str(tool_num[tool]))
+        time.sleep(t)
+        kb.release(str(tool_num[tool]))
+    else:
+        print(f"Tool '{tool}' not recognized. Available tools: {list(tool_num.keys())}")
 
 def move_forward(t: float) -> None:
     kb.press("w")
@@ -107,14 +154,6 @@ def turn_down(t: float, p: int = 15, s: float = 0.005) -> None:
     for _ in range(int(t / s)):
         move_mouse_relative(0, p)
         time.sleep(s)
-
-def switch_tool(tool: str, t: float = 0.1) -> None:
-    if tool in tool_num:
-        kb.press(str(tool_num[tool]))
-        time.sleep(t)
-        kb.release(str(tool_num[tool]))
-    else:
-        print(f"Tool '{tool}' not recognized. Available tools: {list(tool_num.keys())}")
 
 def attack(t: float = 0.1) -> None:
     switch_tool("sword")

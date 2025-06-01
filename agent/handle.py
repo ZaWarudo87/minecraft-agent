@@ -1,3 +1,11 @@
+"""
+TODO
+- 如果能透過種子碼拿到整張地圖的話，要去解掉 handle_join(pkt) 的註解，以獲取種子碼
+- 如果有用Minecraft指令的話，記得完成 handle_chat(pkt) 去接住回傳結果
+- 要完成 handle_chat(pkt) 的死亡處理
+"""
+
+import csv
 import json
 import math
 import os
@@ -20,10 +28,11 @@ from minecraft.networking.packets.clientbound.play import (
     PlayerPositionAndLookPacket,
     SoundEffectPacket,
     SpawnPlayerPacket,
+    TimeUpdatePacket
 )
 from minecraft.networking.packets.serverbound.play import (
     ChatPacket,
-    PositionAndLookPacket,
+    PositionAndLookPacket
 )
 
 from . import agent
@@ -36,6 +45,7 @@ my_coor = {"x": 0.0, "y": 0.0, "z": 0.0}
 connect = None
 look_you = [False, False] # agent_look_master, master_look_agent
 receiving = False
+world_time = 0
 
 now_dir = os.path.dirname(__file__)
 with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
@@ -68,6 +78,7 @@ def handle_self_pos(pkt: PlayerPositionAndLookPacket):
 
 def handle_join(pkt: JoinGamePacket):
     print(f"Connected. Entity ID: {pkt.entity_id}")
+    # mc.load_world(pkt.hashed_seed)
     try:
         with MCRcon(info["server"], "doggybot", port=25575) as mcr:
             response = mcr.command(f"op {info["username"]}")
@@ -107,7 +118,18 @@ def handle_look(pkt: EntityLookPacket) -> None:
 def handle_chat(pkt: ChatMessagePacket) -> None:
     global f3, player_list
     payload = pkt.json_data
-    cmdt, name, text = mc.decode(payload)
+    cmdt, name, text = mc.decode(payload) # command_type_NBT(?), possible_relative_player, result
+    # ------------------------------------------------------------------------------------------
+    # | TODO: 想辦法抓到agent的死亡訊息                                                          |
+    # |       要在../train/death_time.csv記錄死亡時間，存 world_time 進去就好了，反正大概長下面這樣 |
+    # ------------------------------------------------------------------------------------------
+    # with open(os.path.join(now_dir, "../train/death_time.csv"), "a", newline="", encoding="utf-8") as f:
+    #     csv.writer(f).writerow([world_time])
+
+    # -----------------------------------------------------------------------------------------
+    # | TODO: 想辦法接到你的指令回傳結果，並做出相應處理                                          |
+    # |       指令執行結果的 text 只會有值本人而已，我也找不到辦法去抓到是哪條指令發出才得到這個結果 |
+    # -----------------------------------------------------------------------------------------
     if cmdt == "commands.data.entity.query":
         if name in player_list and player_list[name] in f3:
             if isinstance(text, list) and len(text) == 3 and all(isinstance(i, float) for i in text):
@@ -155,6 +177,11 @@ def handle_chunk(pkt: MultiBlockChangePacket) -> None:
 def handle_sound(pkt: SoundEffectPacket) -> None:
     print(f"Sound effect received: {pkt.sound_id} in {pkt.sound_category} at {pkt.effect_position} with volume {pkt.volume} and pitch {pkt.pitch}")
 
+def handle_time(pkt: TimeUpdatePacket) -> None:
+    global world_time
+    world_time = pkt.world_age
+    agent.score_temp.append(agent.score_all)
+
 def update_coor() -> Table:
     global f3
     coor_table = Table(title="Entity Coordinates")
@@ -191,8 +218,8 @@ def update_coor() -> Table:
 def print_f3() -> None:
     with Live(update_coor(), refresh_per_second=10, screen=False) as live:
         while True:
-            time.sleep(0.05)
-            if not receiving:
+            time.sleep(0.05) # 1 tick
+            if not receiving and agent.ctrl_agent:
                 if info["agent_name"] in player_list:
                     cmd(f"data get entity {info["agent_name"]} Pos")
                     cmd(f"data get entity {info["agent_name"]} Health")
@@ -254,6 +281,7 @@ def handle(conn: Connection) -> None:
     conn.register_packet_listener(handle_chat, ChatMessagePacket)
     conn.register_packet_listener(handle_block, BlockChangePacket)
     conn.register_packet_listener(handle_chunk, MultiBlockChangePacket)
+    conn.register_packet_listener(handle_time, TimeUpdatePacket)
     #conn.register_packet_listener(handle_sound, SoundEffectPacket)
 
     threading.Thread(target=print_f3, daemon=True).start()
@@ -261,7 +289,7 @@ def handle(conn: Connection) -> None:
 
 def handle_test(pkt: Packet) -> None:
     pkt_name = pkt.__class__.__name__
-    lint_off = [
+    lint_off = [ # This is all that appears before and I've tried to use.
         "Packet",
         "BlockChangePacket",
         "ChatMessagePacket",

@@ -1,6 +1,12 @@
+"""
+TODO
+- 完成 move.py, handle.py, mc.py 之後，取消 start(conn) 裡面的註解，並註解目前頂著的 time.sleep(1)
+"""
+
 import csv
 import json
 import os
+import random
 import threading
 import time
 
@@ -18,12 +24,23 @@ now_dir = os.path.dirname(__file__)
 heuristic_block = SortedDict()
 heuristic_entity = {}
 item_rarity = {}
+score_temp = []
+score_all = 0
 info = {}
 ctrl_agent = False
 connect = None
+movement = [
+    "jump", "sneak", "offset", "place",
+    "walk_W", "sprint_W", "walk_WA", "sprint_WA",
+    "walk_A", "sprint_A", "walk_AS", "sprint_AS",
+    "walk_S", "sprint_S", "walk_SD", "sprint_SD",
+    "walk_D", "sprint_D", "walk_DW", "sprint_DW",
+    "break_U", "break_UF", "break_F", "break_DF", "break_D"
+]
+last_op = [None, None] # block, movement
 
 def read_file() -> None:
-    global heuristic_block, heuristic_entity, item_rarity, info
+    global heuristic_block, heuristic_entity, item_rarity, info, score_all
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "r", encoding="utf-8") as f:
         fin = csv.reader(f)
         for i in fin:
@@ -64,10 +81,19 @@ def read_file() -> None:
 
     with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
         info = json.load(f)
+
+    with open(os.path.join(now_dir, "../train/score.csv"), "rb") as f:
+        f.seek(-2, 2)
+        try:
+            while f.read(1) != b"\n":
+                f.seek(-2, 1)
+        except:
+            f.seek(-1, 1)
+        score_all = int(f.readline().decode())
     print("Heuristic data loaded successfully.")
 
 def save_file(get_token: bool = True) -> None:
-    global heuristic_block, heuristic_entity, item_rarity
+    global heuristic_block, heuristic_entity, item_rarity, score_temp
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
         fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
@@ -80,6 +106,12 @@ def save_file(get_token: bool = True) -> None:
         fout.writerow(["entity_id", "entity_name", "killable", "score"])
         for entity_id, entity_data in heuristic_entity.items():
             fout.writerow([entity_id, entity_data["entity_name"], int(entity_data["killable"]), entity_data["score"]])
+    
+    with open(os.path.join(now_dir, "../train/score.csv"), "a", newline="", encoding="utf-8") as f:
+        fout = csv.writer(f)
+        for i in score_temp:
+            fout.writerow([i])
+        score_temp = []
 
     if get_token:
         with open(os.path.join(now_dir, "login/info.json"), "w", encoding="utf-8") as f:
@@ -110,8 +142,8 @@ def check_window() -> None:
 
         if bef != ctrl_agent:
             if ctrl_agent:
-                if not kbl.game_test():
-                    move.back_to_game()
+                # if not kbl.game_test():
+                #     move.back_to_game()
                 print("Minecraft window is active, agent control enabled.")
             else:
                 print("Minecraft window is not active, agent control disabled.")
@@ -122,10 +154,32 @@ def gain_item(item: dict) -> None:
     for k, v in item.items():
         score += 2 ** item_rarity[k]["rarity"] * v
     print(f"Score gained: {score}")
-    print(f"Item gained: {item}")
+    if last_op[0] and last_op[1]:
+        heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] += score
+        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] += score
+
+def dfs(x: float, y: float, z: float, sim: list = movement, dep: int = 3) -> tuple[list, int]:
+    if dep <= 0:
+        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["offset"]
+    
+    ans = []
+    for i in sim:
+        nx, ny, nz, sim_block = move.move_sim(x, y, z, i)
+        choice = heuristic_block[mc.get_block_min(sim_block)]["action"]
+        score = 0
+        for k, v in choice.items():
+            if k != "offset":
+                _, aft = dfs(nx, ny, nz, sim, dep - 1)
+                nows = v + aft
+                if nows > score:
+                    score = nows
+                    ans = [k]
+                elif nows == score:
+                    ans.append(k)
+    return ans, score
 
 def start(conn: Connection) -> None:
-    global connect
+    global connect, last_op
     connect = conn
     read_file()
     handle.handle(conn)
@@ -146,7 +200,18 @@ def start(conn: Connection) -> None:
         while True:
             while not ctrl_agent:
                 time.sleep(1)
-            time.sleep(1)
+            time.sleep(1) # remember to comment this!!!
+            # if random.random() < 0.05:
+            #     choice = movement
+            #     status = 0
+            #     print("Random pick.")
+            # else:
+            #     x, y, z = handle.f3[handle.player_list[info["agent_name"]]]["x"], handle.f3[handle.player_list[info["agent_name"]]]["y"], handle.f3[handle.player_list[info["agent_name"]]]["z"]
+            #     choice, status = dfs(x, y, z)
+            #     print(f"choices: {choice}, score: {status}")
+            # result = random.choice(choice)
+            # last_op = [handle.f3[handle.player_list[info["agent_name"]]]["block"], result]
+            # move.move(result)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
         save_file(False)

@@ -1,3 +1,10 @@
+"""
+TODO
+- 如果能透過種子碼拿到整張地圖的話，就去做 load_world(seed)（然後就可以無視 get_block(x, y, z) 的TODO）
+- 否則想辦法完成 get_block(x, y, z) 的TODO
+- 要用PyCraft的話就搭配 handle.py，要用MineCraft指令的話用 handle.cmd(line)，例如 handle.cmd('gamemode survival')，並且要去編輯 handle.py 接住指令回傳結果
+"""
+
 import json
 import math
 import numpy as np
@@ -20,6 +27,13 @@ except:
     block = {} # block[x][y][z] = block_state_id
 block_name_dict = SortedDict()
 hotkey = [""] * 9
+
+def load_world(seed: int) -> None:
+    if not block:
+        # -------------------------------------------------------------------------------------------------------
+        # | TODO: 想辦法獲得這個地圖種子碼每個block座標跟block_state_id，存到 mc.block[x][y][z] = block_state_id 中 |
+        # -------------------------------------------------------------------------------------------------------
+        save_block()
 
 def extra(ipt: list) -> str:
     ans = ""
@@ -63,7 +77,10 @@ def get_block(x: int, y: int, z: int) -> int:
     try:
         return block[str(x)][str(y)][str(z)]
     except KeyError:
-        print(f"{handle.connect.world_get_block(Position(x, y, z))}")
+        #print(f"{handle.connect.world_get_block(Position(x, y, z))}") #FAKE
+        # -------------------------------------------
+        # | TODO: 想辦法獲得這個block的block_state_id |
+        # -------------------------------------------
         return -1
     
 def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list, mx: float = 4.5, s: float = 0.1) -> int:
@@ -108,16 +125,17 @@ def load_block_name(data: dict) -> None:
             "block_name": v["block_name"]
         }
 
-def get_block_name(id: int) -> str:
+def get_block_min(id: int) -> int:
     idx = block_name_dict.bisect_right(id)
     if idx < len(block_name_dict):
         loc = block_name_dict.iloc[idx - 1]
         if block_name_dict[loc]["block_maxStateId"] >= id:
-            return block_name_dict[loc]["block_name"]
+            return loc
         else:
-            return f"{block_name_dict[loc]["block_maxStateId"]}"
-    else:
-        return "error"
+            return -1
+        
+def get_block_name(id: int) -> str:
+    return block_name_dict[get_block_min(id)]["block_name"]
     
 def get_item(inv: list, bef: dict) -> dict:
     item = bef.copy()

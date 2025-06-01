@@ -6,13 +6,13 @@ pressed_key = set()
 gui = {}
 key_set = {
     "w", "a", "s", "d",
-    "1", "2", "3", "4", "5", "6",
+    "1", "2", "3", "4", "5", "6", "7", "8", "9",
     "space", "shift", "ctrl",
     "mouse_left", "mouse_right"
 }
 layout = [
-    [     "", "1", "2", "3", "4", "5",    "6"],
-    ["shift",  "",  "", "w",  "",  "",   "ml",   "mr"],
+    [    "1", "2", "3", "4", "5", "6",    "7",      "8", "9"],
+    ["shift",  "",  "", "w",  "",  "",   "ml",     "mr"],
     [ "ctrl",  "", "a", "s", "d",  "", "[__]", "(0, 0)"]
 ]
 bef_mouse = {"x": 0, "y": 0}
@@ -22,10 +22,8 @@ def get_key(key) -> str:
         k = key.char.lower()
     except AttributeError:
         k = str(key).replace('Key.', '')
-        if k == 'ctrl_l' or k == 'ctrl_r':
+        if k == 'ctrl_l':
             k = 'ctrl'
-        elif k == 'shift_l' or k == 'shift_r':
-            k = 'shift'
     return k
 
 def on_press(key: keyboard.Key) -> None:
@@ -55,17 +53,22 @@ def on_move(x, y) -> None:
     bef_mouse["x"] = x
     bef_mouse["y"] = y
 
-def game_test() -> bool:
-    time.sleep(0.5)
+def game_test() -> bool: # failed
     test_mouse = mouse.Controller()
     befx, befy = test_mouse.position
-    test_mouse.move(100, 100)
+    for i in range(10):
+        test_mouse.move(5, 5)
+        time.sleep(0.05)
+    print("befx:", befx)
+    print("befy:", befy)
+    print("test_mouse.position[0]:", test_mouse.position[0])
+    print("test_mouse.position[1]:", test_mouse.position[1])
     return abs(test_mouse.position[0] - befx) < 10 and abs(test_mouse.position[1] - befy) < 10
 
 def kb_listen() -> None:
     screen = tk.Tk()
     screen.title("Keyboard Listener")
-    screen.geometry("700x200")
+    screen.geometry("800x200")
     screen.resizable(True, True)
     frame = tk.Frame(screen)
     frame.pack(expand=True)
