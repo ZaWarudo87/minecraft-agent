@@ -392,6 +392,12 @@ if __name__ == "__main__":
     one_block_time = 0.2317
     one_turn_time = 0.105
     while True:
+        cmd = input("Enter command (jump/sneak/place/walk_X/sprint_X/break_X/exit): ").strip().lower()
+        print("please click the Minecraft window, enter the game, and wait for 3 seconds.")
+        time.sleep(3)
+        move(cmd)
+
+    while True:
         command = input("Enter command (w/a/s/d/jump/sneak/turn/dig/exit): ").strip().lower()
         if command == "w":
             time.sleep(1)

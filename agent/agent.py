@@ -159,7 +159,7 @@ def gain_item(item: dict) -> None:
         print(f"Score gained: {score}")
         if last_op[0] and last_op[1]:
             heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] += score
-            heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] += score
+            heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["action"]["offset"] += score
             score_all += score
 
 def minus(s: int) -> None:
@@ -167,19 +167,20 @@ def minus(s: int) -> None:
     print(f"Score minus: {s}")
     if last_op[0] and last_op[1]:
         heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] -= s
-        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["offset"] -= s
+        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["action"]["offset"] -= s
         score_all += s
 
 def dfs(x: float, y: float, z: float, sim: list = movement, dep: int = 3) -> tuple[list, int]:
     if dep <= 0:
-        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["offset"]
+        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]
     
     ans = []
     for i in sim:
         nx, ny, nz, sim_block = move.move_sim(x, y, z, i)
         choice = heuristic_block[mc.get_block_min(sim_block)]["action"]
+        ans = []
         score = 0
-        for k, v in choice.items():
+        for k, v in choice:
             if k != "offset":
                 _, aft = dfs(nx, ny, nz, sim, dep - 1)
                 nows = v + aft
@@ -213,17 +214,17 @@ def start(conn: Connection) -> None:
             while not ctrl_agent:
                 time.sleep(1)
             time.sleep(1) # remember to comment this!!!
-            # if random.random() < 0.05:
-            #     choice = movement
-            #     status = 0
-            #     print("Random pick.")
-            # else:
-            #     x, y, z = handle.f3[handle.player_list[info["agent_name"]]]["x"], handle.f3[handle.player_list[info["agent_name"]]]["y"], handle.f3[handle.player_list[info["agent_name"]]]["z"]
-            #     choice, status = dfs(x, y, z)
-            #     print(f"choices: {choice}, score: {status}")
-            # result = random.choice(choice)
-            # last_op = [handle.f3[handle.player_list[info["agent_name"]]]["block"], result]
-            # move.move(result)
+            if random.random() < 0.05:
+                choice = movement
+                status = 0
+                print("Random pick.")
+            else:
+                x, y, z = handle.f3[handle.player_list[info["agent_name"]]]["x"], handle.f3[handle.player_list[info["agent_name"]]]["y"], handle.f3[handle.player_list[info["agent_name"]]]["z"]
+                choice, status = dfs(x, y, z)
+                print(f"choices: {choice}, score: {status}")
+            result = random.choice(choice)
+            last_op = [handle.f3[handle.player_list[info["agent_name"]]]["block"], result]
+            move.move(result)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
         save_file(False)
