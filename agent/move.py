@@ -73,6 +73,160 @@ def move(cmd: str) -> None:
     # |       - "break_U", "break_UF", "break_F", "break_DF", "break_D" // 選擇對應工具破壞 pitch = [-90, -45, 0, 45, 90] 瞄準的方塊 |
     # |       然後還要想辦法能選到對應工具，switch_tool(tool) 可以切過去那樣工具（如果快捷欄裡面有的話）                                 |
     # ------------------------------------------------------------------------------------------------------------------------------
+    global _current_keys, _current_sprinting, _sneaking
+
+    cmd = cmd.strip()
+
+    # 1) "jump"：先放開所有移動鍵與 sneaking，再執行跳
+    if cmd == "jump":
+        for k in list(_current_keys):
+            kb.release(k)
+        _current_keys.clear()
+        if _current_sprinting:
+            kb.release(Key.ctrl)
+            _current_sprinting = False
+        if _sneaking:
+            kb.release(Key.shift)
+            _sneaking = False
+        kb.press(Key.space)
+        time.sleep(0.1)
+        kb.release(Key.space)
+        return
+
+    # 2) "sneak"：先放開移動鍵與 sprint，然後按住 Shift
+    if cmd == "sneak":
+        for k in list(_current_keys):
+            kb.release(k)
+        _current_keys.clear()
+        if _current_sprinting:
+            kb.release(Key.ctrl)
+            _current_sprinting = False
+        if _sneaking:
+            kb.release(Key.shift)
+            time.sleep(0.02)
+        kb.press(Key.shift)
+        _sneaking = True
+        return
+
+    # 3) "place"：先放開所有移動鍵與 sneaking，跳一下再右鍵放置
+    if cmd == "place":
+        for k in list(_current_keys):
+            kb.release(k)
+        _current_keys.clear()
+        if _current_sprinting:
+            kb.release(Key.ctrl)
+            _current_sprinting = False
+        if _sneaking:
+            kb.release(Key.shift)
+            _sneaking = False
+        kb.press(Key.space)
+        time.sleep(0.1)
+        kb.release(Key.space)
+        mouse.press(Button.right)
+        time.sleep(0.1)
+        mouse.release(Button.right)
+        return
+
+    # 4) "walk_X" 或 "sprint_X"
+    is_sprint = False
+    direction = None
+    if cmd.startswith("sprint_"):
+        is_sprint = True
+        direction = cmd[len("sprint_"):]
+    elif cmd.startswith("walk_"):
+        is_sprint = False
+        direction = cmd[len("walk_"):]
+    else:
+        direction = None
+
+    if direction is not None:
+        if _sneaking:
+            kb.release(Key.shift)
+            _sneaking = False
+        if is_sprint and not _current_sprinting:
+            kb.press(Key.ctrl)
+            _current_sprinting = True
+            time.sleep(0.02)
+        if (not is_sprint) and _current_sprinting:
+            kb.release(Key.ctrl)
+            _current_sprinting = False
+            time.sleep(0.02)
+
+        wanted_keys = set()
+        for ch in direction:
+            if ch == "W":
+                wanted_keys.add("w")
+            elif ch == "A":
+                wanted_keys.add("a")
+            elif ch == "S":
+                wanted_keys.add("s")
+            elif ch == "D":
+                wanted_keys.add("d")
+
+        for k in list(_current_keys):
+            if k not in wanted_keys:
+                kb.release(k)
+                _current_keys.remove(k)
+                time.sleep(0.01)
+        for k in wanted_keys:
+            if k not in _current_keys:
+                kb.press(k)
+                _current_keys.add(k)
+                time.sleep(0.01)
+        return
+
+    # 5) "break_*"
+    if cmd.startswith("break_"):
+        for k in list(_current_keys):
+            kb.release(k)
+        _current_keys.clear()
+        if _current_sprinting:
+            kb.release(Key.ctrl)
+            _current_sprinting = False
+        if _sneaking:
+            kb.release(Key.shift)
+            _sneaking = False
+
+        parts = cmd.split("_", 1)
+        if len(parts) == 2:
+            pitch_code = parts[1]
+            # switch_tool("pickaxe")
+            if pitch_code == "U":
+                turn_up(TURN_45_DEG * 2)
+            elif pitch_code == "UF":
+                turn_up(TURN_45_DEG)
+            elif pitch_code == "F":
+                pass
+            elif pitch_code == "DF":
+                turn_down(TURN_45_DEG)
+            elif pitch_code == "D":
+                turn_down(TURN_45_DEG * 2)
+
+            time.sleep(0.05)
+            mouse.press(Button.left)
+            time.sleep(0.15)
+            mouse.release(Button.left)
+
+            if pitch_code == "U":
+                turn_down(TURN_45_DEG * 2)
+            elif pitch_code == "UF":
+                turn_down(TURN_45_DEG)
+            elif pitch_code == "DF":
+                turn_up(TURN_45_DEG)
+            elif pitch_code == "D":
+                turn_up(TURN_45_DEG * 2)
+        return
+
+    # 6) 其他：停止所有移動與 sneaking
+    for k in list(_current_keys):
+        kb.release(k)
+    _current_keys.clear()
+    if _current_sprinting:
+        kb.release(Key.ctrl)
+        _current_sprinting = False
+    if _sneaking:
+        kb.release(Key.shift)
+        _sneaking = False
     return NotImplementedError
 
 def move_sim(x: float, y: float, z: float, cmd: str) -> tuple[float, float, float, int]:
@@ -80,6 +234,75 @@ def move_sim(x: float, y: float, z: float, cmd: str) -> tuple[float, float, floa
     # | TODO: 解析上述動作，並回傳若執行後會到的座標，以及腳下方塊的block_state_id會變成什麼，可用 mc.get_block(x, y, z) 取得，y記得減1 |
     # ----------------------------------------------------------------------------------------------------------------------------
     # return next_x, next_y, next_z, block_state_id
+    cmd = cmd.strip()
+
+    # 1) "jump"
+    if cmd == "jump":
+        next_x, next_y, next_z = x, y + 1, z
+        block_id = mc.get_block(x, y - 1, z)
+        return next_x, next_y, next_z, block_id
+
+    # 2) "sneak"
+    if cmd == "sneak":
+        block_id = mc.get_block(x, y - 1, z)
+        return x, y, z, block_id
+
+    # 3) "place"
+    if cmd == "place":
+        placed_block_id = 1
+        try:
+            mc.set_block(x, y - 1, z, placed_block_id)
+        except AttributeError:
+            pass
+        return x, y, z, placed_block_id
+
+    # 4) "walk_X" 或 "sprint_X"
+    direction = None
+    if cmd.startswith("walk_"):
+        direction = cmd[len("walk_"):]
+    elif cmd.startswith("sprint_"):
+        direction = cmd[len("sprint_"):]
+
+    if direction is not None:
+        if direction == "W":
+            dx, dz = 0, 1
+        elif direction == "WA":
+            dx, dz = -1, 1
+        elif direction == "A":
+            dx, dz = -1, 0
+        elif direction == "AS":
+            dx, dz = -1, -1
+        elif direction == "S":
+            dx, dz = 0, -1
+        elif direction == "SD":
+            dx, dz = 1, -1
+        elif direction == "D":
+            dx, dz = 1, 0
+        elif direction == "DW":
+            dx, dz = 1, 1
+        else:
+            return NotImplementedError
+
+        if abs(dx) == 1 and abs(dz) == 1:
+            length = (2 ** 0.5)
+            ndx = dx / length
+            ndz = dz / length
+        else:
+            ndx = dx
+            ndz = dz
+
+        next_x = x + ndx
+        next_y = y
+        next_z = z + ndz
+        block_id = mc.get_block(next_x, next_y - 1, next_z)
+        return next_x, next_y, next_z, block_id
+
+    # 5) "break_*"
+    if cmd.startswith("break_"):
+        block_id = mc.get_block(x, y - 1, z)
+        return x, y, z, block_id
+
+    # 6) 其他
     return NotImplementedError
 
 def switch_tool(tool: str, t: float = 0.1) -> None:
