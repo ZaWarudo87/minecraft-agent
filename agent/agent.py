@@ -16,32 +16,19 @@ from sortedcontainers import SortedKeyList, SortedDict
 from minecraft.authentication import AuthenticationToken
 from minecraft.networking.connection import Connection
 
-from . import handle
 from . import move
 from . import keyboard_listener as kbl
 from . import mc
+from . import global_var as gv
 
 now_dir = os.path.dirname(__file__)
 heuristic_block = SortedDict()
 heuristic_entity = {}
 item_rarity = {}
-score_temp = []
-score_all = 0
-info = {}
-ctrl_agent = False
-connect = None
-movement = [
-    "jump", "sneak", "offset", "place",
-    "walk_W", "sprint_W", "walk_WA", "sprint_WA",
-    "walk_A", "sprint_A", "walk_AS", "sprint_AS",
-    "walk_S", "sprint_S", "walk_SD", "sprint_SD",
-    "walk_D", "sprint_D", "walk_DW", "sprint_DW",
-    "break_U", "break_UF", "break_F", "break_DF", "break_D"
-]
 last_op = [None, None] # block, movement
 
 def read_file() -> None:
-    global heuristic_block, heuristic_entity, item_rarity, info, score_all
+    global heuristic_block, heuristic_entity, item_rarity
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "r", encoding="utf-8") as f:
         fin = csv.reader(f)
         for i in fin:
@@ -55,8 +42,6 @@ def read_file() -> None:
                     "action": {}
                 }
             heuristic_block[block_min]["action"][i[0]] = int(i[4])
-        for i in heuristic_block:
-            heuristic_block[i]["action"] = SortedKeyList(heuristic_block[i]["action"].items(), key=lambda x: -x[1])
         mc.load_block_name(heuristic_block)
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "r", encoding="utf-8") as f:
@@ -80,9 +65,6 @@ def read_file() -> None:
                 "rarity": int(i[2])
             }
 
-    with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
-        info = json.load(f)
-
     with open(os.path.join(now_dir, "../train/score.csv"), "rb") as f:
         f.seek(-2, 2)
         try:
@@ -90,16 +72,16 @@ def read_file() -> None:
                 f.seek(-2, 1)
         except:
             f.seek(-1, 1)
-        score_all = int(f.readline().decode())
+        gv.score_all = int(f.readline().decode())
     print("Heuristic data loaded successfully.")
 
 def save_file(get_token: bool = True) -> None:
-    global heuristic_block, heuristic_entity, item_rarity, score_temp
+    global heuristic_block, heuristic_entity, item_rarity
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
         fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
         for block_min, block_data in heuristic_block.items():
-            for action, data in block_data["action"]:
+            for action, data in block_data["action"].items():
                 fout.writerow([action, block_min, block_data["block_maxStateId"], block_data["block_name"], data])
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "w", newline="", encoding="utf-8") as f:
@@ -110,14 +92,14 @@ def save_file(get_token: bool = True) -> None:
     
     with open(os.path.join(now_dir, "../train/score.csv"), "a", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
-        for i in score_temp:
+        for i in gv.score_temp:
             fout.writerow([i])
-        score_temp = []
+        gv.score_temp = []
 
     if get_token:
         with open(os.path.join(now_dir, "login/info.json"), "w", encoding="utf-8") as f:
-            info["access_token"] = connect.auth_token.access_token
-            json.dump(info, f, indent=4)
+            gv.info["access_token"] = gv.conn.auth_token.access_token
+            json.dump(gv.info, f, indent=4)
     mc.save_block()
     print("Heuristic data saved successfully.")
 
@@ -128,21 +110,20 @@ def save_file_thread() -> None:
         print("Heuristic data auto-saved.")
 
 def check_window() -> None:
-    global ctrl_agent
     while True:
-        bef = ctrl_agent
+        bef = gv.ctrl_agent
         try:
             window = gw.getWindowsWithTitle("Minecraft 1.18")[0]
-            ctrl_agent = handle.connected and not window.isMinimized and window.isActive
+            gv.ctrl_agent = gv.connected and not window.isMinimized and window.isActive
         except IndexError:
-            ctrl_agent = False
+            gv.ctrl_agent = False
         except Exception as e:
-            ctrl_agent = False
+            gv.ctrl_agent = False
             print(f"Error checking Minecraft window: {e}")
             break
 
-        if bef != ctrl_agent:
-            if ctrl_agent:
+        if bef != gv.ctrl_agent:
+            if gv.ctrl_agent:
                 # if not kbl.game_test():
                 #     move.back_to_game()
                 print("Minecraft window is active, agent control enabled.")
@@ -151,36 +132,42 @@ def check_window() -> None:
         time.sleep(1)
 
 def gain_item(item: dict) -> None:
-    global score_all, heuristic_block
+    global heuristic_block
     score = 0
     for k, v in item.items():
         score += 2 ** item_rarity[k]["rarity"] * v
     if score > 0:
-        print(f"Score gained: {score}")
-        if last_op[0] and last_op[1]:
-            heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] += score
-            heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["action"]["offset"] += score
-            score_all += score
+        plus(score)
+
+def plus(s: int) -> None:
+    global heuristic_block
+    print(f"Score plus: {s}")
+    if last_op[0] and last_op[1]:
+        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]] += s
+        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"] += s
+        gv.score_all += s
 
 def minus(s: int) -> None:
-    global score_all, heuristic_block
+    global heuristic_block
     print(f"Score minus: {s}")
     if last_op[0] and last_op[1]:
-        heuristic_block[mc.get_block_min(last_op[0])][last_op[1]] -= s
-        heuristic_block[handle.f3[handle.player_list[info["agent_name"]]]["block"]]["action"]["offset"] -= s
-        score_all += s
+        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]] -= s
+        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"] -= s
+        gv.score_all += s
 
-def dfs(x: float, y: float, z: float, sim: list = movement, dep: int = 3) -> tuple[list, int]:
+def dfs(x: float, y: float, z: float, sim: list = gv.movement, dep: int = 2) -> tuple[list, int]:
     if dep <= 0:
         return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]
     
     ans = []
     for i in sim:
         nx, ny, nz, sim_block = move.move_sim(x, y, z, i)
+        if sim_block == -2:
+            continue
         choice = heuristic_block[mc.get_block_min(sim_block)]["action"]
         ans = []
         score = 0
-        for k, v in choice:
+        for k, v in choice.items():
             if k != "offset":
                 _, aft = dfs(nx, ny, nz, sim, dep - 1)
                 nows = v + aft
@@ -191,44 +178,49 @@ def dfs(x: float, y: float, z: float, sim: list = movement, dep: int = 3) -> tup
                     ans.append(k)
     return ans, score
 
-def start(conn: Connection) -> None:
-    global connect, last_op
-    connect = conn
+def start() -> None:
+    global last_op
     read_file()
-    handle.handle(conn)
+    from .handle import handle, get_dist
+    handle()
     threading.Thread(target=save_file_thread, daemon=True).start()
     print("**Packet catcher started, waiting for starting Minecraft...**")
     while True:
         window = gw.getWindowsWithTitle("Minecraft 1.18")
-        if window and handle.connected:
+        if window and gv.connected:
             threading.Thread(target=kbl.kb_listen, daemon=True).start()
             threading.Thread(target=check_window, daemon=True).start()
             window[0].restore()
             window[0].activate()
             break
-        time.sleep(1)
+        print("Please ensure that you are in the game, not pausing, chatting, or using the inventory.")
+        time.sleep(5)
     print("Agent started successfully.")
 
     try:
+        last_dist = -1
         while True:
-            while not ctrl_agent:
+            while not gv.ctrl_agent:
                 time.sleep(1)
-            time.sleep(1) # remember to comment this!!!
             if random.random() < 0.05:
-                choice = movement
+                choice = gv.movement
                 status = 0
-                print("Random pick.")
+                #print("Random pick.")
             else:
-                x, y, z = handle.f3[handle.player_list[info["agent_name"]]]["x"], handle.f3[handle.player_list[info["agent_name"]]]["y"], handle.f3[handle.player_list[info["agent_name"]]]["z"]
+                x, y, z = gv.f3[gv.player_list[gv.info["agent_name"]]]["x"], gv.f3[gv.player_list[gv.info["agent_name"]]]["y"], gv.f3[gv.player_list[gv.info["agent_name"]]]["z"]
                 choice, status = dfs(x, y, z)
-                print(f"choices: {choice}, score: {status}")
+                #print(f"choices: {choice}, score: {status}")
             result = random.choice(choice)
-            last_op = [handle.f3[handle.player_list[info["agent_name"]]]["block"], result]
+            last_op = [gv.f3[gv.player_list[gv.info["agent_name"]]]["block"], result]
             move.move(result)
+            now_dist = get_dist()
+            if now_dist != -1 and now_dist < last_dist:
+                plus((last_dist - now_dist) * last_dist)
+            last_dist = now_dist
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
         save_file(False)
-        conn.disconnect()
+        gv.conn.disconnect()
 
 if __name__ == "__main__":
     print("Please connect to a server first.")

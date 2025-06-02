@@ -2,7 +2,8 @@ import time
 import tkinter as tk
 from pynput import keyboard, mouse
 
-pressed_key = set()
+from . import global_var as gv
+
 gui = {}
 key_set = {
     "w", "a", "s", "d",
@@ -29,23 +30,26 @@ def get_key(key) -> str:
 def on_press(key: keyboard.Key) -> None:
     k = get_key(key)
     if k in key_set:
-        pressed_key.add(k)
+        gv.pressed_key.add(k)
         gui[k].config(bg="green")
+    elif k == "t":
+        gv.ctrl_agent = False
+        print("Keyboard control disabled.")
 
 def on_release(key: keyboard.Key) -> None:
     k = get_key(key)
-    if k in pressed_key:
-        pressed_key.remove(k)
+    if k in gv.pressed_key:
+        gv.pressed_key.remove(k)
         gui[k].config(bg="lightgray")
 
 def on_click(x, y, button, pressed) -> None:
     k = [["", "mouse_right"][button == mouse.Button.right], "mouse_left"][button == mouse.Button.left]
     if k in key_set:
         if pressed:
-            pressed_key.add(k)
+            gv.pressed_key.add(k)
             gui[k].config(bg="green")
         else:
-            pressed_key.discard(k)
+            gv.pressed_key.discard(k)
             gui[k].config(bg="lightgray")
 
 def on_move(x, y) -> None:

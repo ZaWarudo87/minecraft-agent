@@ -66,6 +66,15 @@ def init_rarity() -> None:
         for i in item:
             fout.writerow([i["id"], i["name"], 0])
 
+def init_score() -> None:
+    with open(os.path.join(now_dir, "score.csv"), "w", newline="") as f:
+        fout = csv.writer(f)
+        fout.writerow([0])
+        
+def init_death_time() -> None:
+    with open(os.path.join(now_dir, "death_time.csv"), "w", newline="") as f:
+        fout = csv.writer(f)
+
 if __name__ == "__main__":
     if not os.path.exists(os.path.join(now_dir, "heuristic_block.csv")):
         print("Initializing heuristic block data...")
@@ -87,3 +96,16 @@ if __name__ == "__main__":
         print("Item rarity data initialized.")
     else:
         print("Item rarity data already exists.")
+
+    if not os.path.exists(os.path.join(now_dir, "score.csv")):
+        print("Initializing score data...")
+        init_score()
+        print("Score data initialized.")
+
+    if not os.path.exists(os.path.join(now_dir, "death_time.csv")):
+        print("Initializing death time data...")
+        init_death_time()
+        print("Death time data initialized.")
+    else:
+        print("Death time data already exists.")
+    print("Heuristic initialization completed successfully.")

@@ -14,14 +14,11 @@ import nbtlib
 from sortedcontainers import SortedDict
 from minecraft.networking.types import Position
 
-from . import move
-from . import handle
+from . import global_var as gv
 
 now_dir = os.path.dirname(__file__)
-with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
-    info = json.load(f)
 try:
-    with open(os.path.join(now_dir, f"../world_cache/{info["server"]}_{info["port"]}_block.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, f"../world_cache/{gv.info["server"]}_{gv.info["port"]}_block.json"), "r", encoding="utf-8") as f:
         block = json.load(f)
 except:
     block = {} # block[x][y][z] = block_state_id
@@ -73,7 +70,8 @@ def to_dict(ipt: nbtlib.Compound) -> dict:
     else:
         return ipt
     
-def get_block(x: int, y: int, z: int) -> int:
+def get_block(x: float, y: float, z: float) -> int:
+    x, y, z = int(math.floor(x)), int(round(y)), int(math.floor(z))
     try:
         return block[str(x)][str(y)][str(z)]
     except KeyError:
@@ -83,7 +81,7 @@ def get_block(x: int, y: int, z: int) -> int:
         # -------------------------------------------
         return -1
     
-def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list, mx: float = 4.5, s: float = 0.1) -> int:
+def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 4.5, s: float = 0.1) -> int:
     ya = math.radians(yaw)
     pi = math.radians(pitch)
     vx = -math.sin(ya) * math.cos(pi)
@@ -99,9 +97,10 @@ def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look:
         #print(f"gazing at ({bx}, {by}, {bz})")
         # TODO: check whether agent and master is look at each other
         bid = get_block(bx, by, bz)
-        if bid > 0 and not (34 <= bid <= 49) and not (50 <= bid <= 65):
+        if not is_empty_block(bid):
+            look_coor = [bx, by, bz]
             return bid
-    return -1
+    return bid
     
 def set_block(x: int, y: int, z: int, id: int) -> None:
     #print(f"set block ({x}, {y}, {z}) to {get_block_name(id)}")
@@ -114,7 +113,7 @@ def set_block(x: int, y: int, z: int, id: int) -> None:
     block[x][y][z] = id
 
 def save_block() -> None:
-    with open(os.path.join(now_dir, f"../world_cache/{info['server']}_{info['port']}_block.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, f"../world_cache/{gv.info['server']}_{gv.info['port']}_block.json"), "w", encoding="utf-8") as f:
         json.dump(block, f)
 
 def load_block_name(data: dict) -> None:
@@ -129,7 +128,6 @@ def get_block_min(id: int) -> int:
     idx = block_name_dict.bisect_right(id)
     if idx < len(block_name_dict):
         loc = block_name_dict.iloc[idx - 1]
-        #print(f"### type: {type(block_name_dict[loc]["block_maxStateId"])}")
         if block_name_dict[loc]["block_maxStateId"] >= id:
             return loc
         else:
@@ -145,7 +143,7 @@ def get_item(inv: list, bef: dict) -> dict:
     for i in inv:
         i["id"] = i["id"][len("minecraft:"):]
         if 0 <= i["Slot"] <= 8 and hotkey[i["Slot"]] != i["id"]:
-            move.tool_num[i["id"]] = i["Slot"] + 1
+            gv.tool_num[i["id"]] = i["Slot"] + 1
             hotkey[i["Slot"]] = i["id"]
         if i["id"] in item:
             item[i["id"]] += i["Count"]
@@ -154,6 +152,13 @@ def get_item(inv: list, bef: dict) -> dict:
     item = {k: v for k, v in item.items() if v != 0}
     return item
     
+def is_empty_block(*args) -> bool:
+    if len(args) == 1:
+        bid = args[0]
+    elif len(args) == 3:
+        bid = get_block(*args)
+    return bid <= 0 or 34 <= bid <= 49 or 50 <= bid <= 65
+
 if __name__ == "__main__":
     if input("Do you want to test decode? (y/n): ").strip().lower() == 'y':
         print(decode(input("Enter SNBT string: ")))

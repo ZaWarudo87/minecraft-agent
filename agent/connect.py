@@ -8,43 +8,40 @@ from minecraft.networking.packets import Packet, DisconnectPacket
 
 from .login import login
 from .agent import start
+from . import global_var as gv
 
 now_dir = os.path.dirname(__file__)
-with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
-    info = json.load(f)
 
 def connect() -> None:
-    token = AuthenticationToken(info["username"], info["access_token"], " ")
-    token.profile.name = info["username"]
-    token.profile.id_ = info["id"]
+    token = AuthenticationToken(gv.info["username"], gv.info["access_token"], " ")
+    token.profile.name = gv.info["username"]
+    token.profile.id_ = gv.info["id"]
     if not token.authenticated:
         print("You haven't logged in yet, please login first.")
         relogin()
         return
-    conn = Connection(info["server"], info["port"], username=info["username"], auth_token=token)
-    conn.connect()
-    conn.register_packet_listener(handle_disconnect, DisconnectPacket)
-    conn.exception_handler = handle_exception
-    print(f"Connecting to server {info['server']}:{info['port']} as {info['username']}...")
-    
+    gv.conn = Connection(gv.info["server"], gv.info["port"], username=gv.info["username"], auth_token=token)
+    gv.conn.connect()
+    gv.conn.register_packet_listener(handle_disconnect, DisconnectPacket)
+    gv.conn.exception_handler = handle_exception
+    print(f"Connecting to server {gv.info['server']}:{gv.info['port']} as {gv.info['username']}...")
+
     try:
-        start(conn)
+        start()
         # while True:
         #     time.sleep(1)
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
-        conn.disconnect()
+        gv.conn.disconnect()
     except Exception as e:
         print(f"Error during connection: {e}")
-        conn.disconnect()
+        gv.conn.disconnect()
         relogin()
 
 def relogin() -> None:
     if input("Do you want to re-login? (y/n): ").strip().lower() == 'y':
         login.main()
-        with open(os.path.join(now_dir, "login/info.json"), "r", encoding="utf-8") as f:
-            global info
-            info = json.load(f)
+        gv.load_info()
         connect()
 
 def handle_disconnect(pkt: Packet) -> None:
