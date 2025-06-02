@@ -33,25 +33,23 @@ if not os.path.exists(PATH):
 
 level_dat = nbtlib.load(PATH)
 level_dat["Data"]["WorldGenSettings"]["seed"] = nbtlib.tag.Long(SEED)
+level_dat["Data"]["WorldGenSettings"]["dimensions"]["minecraft:overworld"]["generator"]["seed"] = nbtlib.tag.Long(SEED)
+level_dat["Data"]["WorldGenSettings"]["dimensions"]["minecraft:the_end"]["generator"]["seed"] = nbtlib.tag.Long(SEED)
+level_dat["Data"]["WorldGenSettings"]["dimensions"]["minecraft:the_end"]["generator"]["biome_source"]["seed"] = nbtlib.tag.Long(SEED)
+level_dat["Data"]["WorldGenSettings"]["dimensions"]["minecraft:the_nether"]["generator"]["seed"] = nbtlib.tag.Long(SEED)
 level_dat.save()
 print("new seed set to", SEED)
-dim1_path = os.path.join("world", "DIM1")
-if os.path.exists(dim1_path):
-    shutil.rmtree(dim1_path)
-    print(f"Deleted {dim1_path}")
-dim_1_path = os.path.join("world", "DIM-1")
-if os.path.exists(dim_1_path):
-    shutil.rmtree(dim_1_path)
-    print(f"Deleted {dim_1_path}")
-region_path = os.path.join("world", "region")
-if os.path.exists(region_path):
-    shutil.rmtree(region_path)
-    print(f"Deleted {region_path}")
-level_dat_old_path = os.path.join("world", "level.dat_old")
-if os.path.exists(level_dat_old_path):
-    os.remove(level_dat_old_path)
-    print(f"Deleted {level_dat_old_path}")
-print("generating new world with seed", SEED)
+for file in os.listdir("world"):
+    if file != "level.dat":
+        file_path = os.path.join("world", file)
+        if os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+            print(f"Deleted directory: {file_path}")
+        else:
+            os.remove(file_path)
+            print(f"Deleted file: {file_path}")
+print("All files except level.dat have been deleted.")
+print("Starting server to generate world with new seed...")
 server_process = subprocess.Popen(["java", "-Xmx2G", "-Xms1G", "-jar", "server.jar", "nogui"],
                                    stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE,
