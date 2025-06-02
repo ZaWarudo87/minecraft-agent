@@ -129,7 +129,7 @@ def get_block_min(id: int) -> int:
     idx = block_name_dict.bisect_right(id)
     if idx < len(block_name_dict):
         loc = block_name_dict.iloc[idx - 1]
-        print(f"### type: {type(block_name_dict[loc]["block_maxStateId"])}")
+        #print(f"### type: {type(block_name_dict[loc]["block_maxStateId"])}")
         if block_name_dict[loc]["block_maxStateId"] >= id:
             return loc
         else:
