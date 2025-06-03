@@ -18,7 +18,7 @@ from pynput.mouse import Button, Controller as MouseController
 
 from . import mc
 from . import global_var as gv
-from .handle import cmd
+from .handle import cmd as CMD
 
 TURN_45_DEG = 0.105
 # Data from Minecraft Wiki
@@ -120,7 +120,7 @@ def move(cmd: str) -> None:
                     click_right(EAT_SPEED)
                     break
             else:
-                cmd("I need cooked food!")
+                CMD("I need cooked food!")
     else:
         if status["sneaking"]:
             kb.release(Key.shift)
@@ -142,7 +142,7 @@ def move(cmd: str) -> None:
                             time.sleep(gv.TICK)
                         break
                 else:
-                    cmd("I need blocks to place!")
+                    CMD("I need blocks to place!")
                 turn_down(TURN_45_DEG * -2)
         elif cmd.startswith("sprint_") or cmd.startswith("walk_"):
             dir = [cmd[len("sprint_"):], cmd[len("walk_"):]][cmd[0] == "w"]
@@ -163,15 +163,18 @@ def move(cmd: str) -> None:
             deg = gv.break_deg[dir]
             turn_down(TURN_45_DEG * (deg // 45))
             target = mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"])
+            print(f"Target block: {target}")
             tar_coor = gv.f3[gv.player_list[gv.info["agent_name"]]]["look"]
             if not mc.is_empty_block(target):
                 for i in gv.tool_num:
-                    if gv.block_info[target]["tool"] and i in gv.block_info[target]["tool"]:
+                    if block_info[target]["tool"] and i in block_info[target]["tool"]:
                         switch_tool(i)
                         break
                 mouse.press(Button.left)
-                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])):
+                bef = gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]
+                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])) and bef != gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]:
                     time.sleep(gv.TICK)
+                    bef = gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]
                 mouse.release(Button.left)
             turn_down(TURN_45_DEG * (deg // 45) * -1)
 

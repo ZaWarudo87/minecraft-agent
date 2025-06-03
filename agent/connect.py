@@ -33,10 +33,10 @@ def connect() -> None:
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
         gv.conn.disconnect()
-    except Exception as e:
-        print(f"Error during connection: {e}")
-        gv.conn.disconnect()
-        relogin()
+    # except Exception as e:
+    #     print(f"Error during connection: {e}")
+    #     gv.conn.disconnect()
+    #     relogin()
 
 def relogin() -> None:
     if input("Do you want to re-login? (y/n): ").strip().lower() == 'y':

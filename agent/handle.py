@@ -42,6 +42,7 @@ import server.region_to_json as rtj
 my_coor = {"x": 0.0, "y": 0.0, "z": 0.0}
 look_you = [False, False] # agent_look_master, master_look_agent
 receiving = False
+obs = Observer()
 
 now_dir = os.path.dirname(__file__)
 pth = os.path.join(now_dir, "../server/world/region")
@@ -53,11 +54,11 @@ class NewFileHandler(FileSystemEventHandler):
             print(f"New file detected: {event_path}")
             threading.Thread(target=rtj.process_region, args=(event_path, gv.info), daemon=True).start()
 
-    def on_modified(self, event):
-        if not event.is_directory:
-            event_path = os.path.join(pth, event.src_path)
-            print(f"File modified: {event_path}")
-            threading.Thread(target=rtj.process_region, args=(event_path, gv.info), daemon=True).start()
+    # def on_modified(self, event):
+    #     if not event.is_directory:
+    #         event_path = os.path.join(pth, event.src_path)
+    #         print(f"File modified: {event_path}")
+    #         threading.Thread(target=rtj.process_region, args=(event_path, gv.info), daemon=True).start()
 
 def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
     for i in [k for k, v in gv.player_list.items() if v == pkt.player_UUID]:
@@ -98,12 +99,9 @@ def handle_join(pkt: JoinGamePacket):
         print(f"Remember to set 'op {gv.info["username"]}' in the server.")
     if gv.info["server"] != "localhost":
         abs_dir = os.path.abspath(os.path.join(now_dir, "../server"))
-        subprocess.Popen(["cmd.exe", "/c", f"start cmd.exe /k \"cd /d {abs_dir} && python regenerate_with_seed.py --seed {pkt.hashed_seed}\""])
-    else:
-        threading.Thread(target=lw, daemon=True).start()
-    obs = Observer()
-    obs.schedule(NewFileHandler(), path=pth, recursive=False)
-    obs.start()
+        subprocess.Popen(["cmd.exe ", "/c", f"start cmd.exe /k \"cd /d {abs_dir} && python regenerate_with_seed.py --seed {pkt.hashed_seed}\""])
+    # else:
+    #     threading.Thread(target=lw, daemon=True).start()
 
 def handle_player_list(pkt: PlayerListItemPacket) -> None:
     for action in pkt.actions:
@@ -300,6 +298,8 @@ def lw() -> None:
             rtj.process_region(region_path, gv.info)
         else:
             print(f"Warning: Region file {region_path} not found, skipping")
+    obs.schedule(NewFileHandler(), path=pth, recursive=False)
+    #obs.start()
 
 def handle() -> None:
     gv.conn.register_packet_listener(handle_spawn_player, SpawnPlayerPacket)

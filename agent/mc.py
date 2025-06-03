@@ -23,14 +23,18 @@ block = {} # block[x][y][z] = block_state_id
 block_name_dict = SortedDict()
 hotkey = [""] * 9
 loading = False
+fname = f"../world_cache/block.json"
 
 def load_world() -> None:
-    global block, loading
+    global block, loading, fname
     loading = True
+    fname = f"../world_cache/{gv.info['server']}_{gv.info['port']}_block_{int(gv.f3[gv.player_list[gv.info['agent_name']]]['x'] // 512)}_{int(gv.f3[gv.player_list[gv.info['agent_name']]]['z'] // 512)}.json"
+    print(f"Loading world from {fname}...")
     try:
-        with open(os.path.join(now_dir, f"../world_cache/{gv.info["server"]}_{gv.info["port"]}_block_{gv.f3[gv.player_list[gv.info["agent_name"]]]["x"] // 512}_{gv.info["server"]}_{gv.info["port"]}_block_{gv.f3[gv.player_list[gv.info["agent_name"]]]["z"] // 512}.json"), "r", encoding="utf-8") as f:
+        with open(os.path.join(now_dir, fname), "r", encoding="utf-8") as f:
             block = json.load(f)
-    except:
+    except Exception as e:
+        print(f"Error loading world: {e}")
         block = {}
         time.sleep(60)
     loading = False
@@ -82,7 +86,7 @@ def get_block(x: float, y: float, z: float) -> int:
             threading.Thread(target=load_world).start()
         return -1
     
-def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 4.5, s: float = 0.1) -> int:
+def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 4, s: float = 0.1) -> int:
     ya = math.radians(yaw)
     pi = math.radians(pitch)
     vx = -math.sin(ya) * math.cos(pi)
@@ -114,7 +118,7 @@ def set_block(x: int, y: int, z: int, id: int) -> None:
     block[x][y][z] = id
 
 def save_block() -> None:
-    with open(os.path.join(now_dir, f"../world_cache/{gv.info['server']}_{gv.info['port']}_block.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(now_dir, fname), "w", encoding="utf-8") as f:
         json.dump(block, f)
 
 def load_block_name(data: dict) -> None:

@@ -42,7 +42,7 @@ def read_file() -> None:
                     "action": {}
                 }
             heuristic_block[block_min]["action"][i[0]] = {
-                "score": int(i[4]),
+                "score": float(i[4]),
                 "num": int(i[5])
             }
         mc.load_block_name(heuristic_block)
@@ -55,7 +55,7 @@ def read_file() -> None:
             heuristic_entity[i[0]] = {
                 "entity_name": i[1],
                 "killable": bool(int(i[2])),
-                "score": int(i[3]),
+                "score": float(i[3]),
                 "num": int(i[4])
             }
 
@@ -76,7 +76,7 @@ def read_file() -> None:
                 f.seek(-2, 1)
         except:
             f.seek(-1, 1)
-        gv.score_all = int(f.readline().decode())
+        gv.score_all = float(f.readline().decode())
     print("Heuristic data loaded successfully.")
 
 def save_file(get_token: bool = True) -> None:
@@ -104,7 +104,7 @@ def save_file(get_token: bool = True) -> None:
         with open(os.path.join(now_dir, "login/info.json"), "w", encoding="utf-8") as f:
             gv.info["access_token"] = gv.conn.auth_token.access_token
             json.dump(gv.info, f, indent=4)
-    mc.save_block()
+    #mc.save_block()
     print("Heuristic data saved successfully.")
 
 def save_file_thread() -> None:
@@ -148,22 +148,22 @@ def plus(s: int) -> None:
     if last_op[0] and last_op[1]:
         heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["num"] += 1
         heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["score"] += (s - heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["score"]) * (1 / heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["num"])
-        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["num"] += 1
-        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["score"] += (s - heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["score"]) * (1 / heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["num"])
+        idx = mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["block"])
+        heuristic_block[idx]["action"]["offset"]["num"] += 1
+        heuristic_block[idx]["action"]["offset"]["score"] += (s - heuristic_block[idx]["action"]["offset"]["score"]) * (1 / heuristic_block[idx]["action"]["offset"]["num"])
         gv.score_all += s
 
 def dfs(x: float, y: float, z: float, sim: list = gv.movement, dep: int = 2) -> tuple[list, float]:
     if dep <= 0:
-        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]["score"]
+        return sim, heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]["score"]
     
     ans = []
+    score = float("-inf")
     for i in sim:
         nx, ny, nz, sim_block = move.move_sim(x, y, z, i)
         if sim_block == -2:
             continue
         choice = heuristic_block[mc.get_block_min(sim_block)]["action"]
-        ans = []
-        score = 0
         for k, v in choice.items():
             if k != "offset":
                 _, aft = dfs(nx, ny, nz, sim, dep - 1)
@@ -197,10 +197,11 @@ def start() -> None:
 
     try:
         last_dist = -1
+        stuck = 0
         while True:
             while not gv.ctrl_agent:
                 time.sleep(1)
-            if random.random() < 0.05:
+            if random.random() < 0.3:
                 choice = gv.movement
                 status = 0
                 #print("Random pick.")
@@ -208,12 +209,19 @@ def start() -> None:
                 x, y, z = gv.f3[gv.player_list[gv.info["agent_name"]]]["x"], gv.f3[gv.player_list[gv.info["agent_name"]]]["y"], gv.f3[gv.player_list[gv.info["agent_name"]]]["z"]
                 choice, status = dfs(x, y, z)
                 #print(f"choices: {choice}, score: {status}")
+            if not choice:
+                choice = gv.movement
             result = random.choice(choice)
             last_op = [gv.f3[gv.player_list[gv.info["agent_name"]]]["block"], result]
             move.move(result)
             now_dist = get_dist()
             if now_dist != -1 and now_dist < last_dist:
                 plus((last_dist - now_dist) * last_dist)
+            if gv.f3[gv.player_list[gv.info["agent_name"]]]["dv"] < 0.1:
+                stuck += 0.01
+                plus(-stuck)
+            else:
+                stuck = 0
             last_dist = now_dist
     except KeyboardInterrupt:
         print("KeyboardInterrupt(ctrl+c) received, shutting down...")
