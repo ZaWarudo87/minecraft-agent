@@ -41,7 +41,10 @@ def read_file() -> None:
                     "block_name": i[3],
                     "action": {}
                 }
-            heuristic_block[block_min]["action"][i[0]] = int(i[4])
+            heuristic_block[block_min]["action"][i[0]] = {
+                "score": int(i[4]),
+                "num": int(i[5])
+            }
         mc.load_block_name(heuristic_block)
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "r", encoding="utf-8") as f:
@@ -52,7 +55,8 @@ def read_file() -> None:
             heuristic_entity[i[0]] = {
                 "entity_name": i[1],
                 "killable": bool(int(i[2])),
-                "score": int(i[3])
+                "score": int(i[3]),
+                "num": int(i[4])
             }
 
     with open(os.path.join(now_dir, "../train/item_rarity.csv"), "r", encoding="utf-8") as f:
@@ -79,17 +83,17 @@ def save_file(get_token: bool = True) -> None:
     global heuristic_block, heuristic_entity, item_rarity
     with open(os.path.join(now_dir, "../train/heuristic_block.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
-        fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
+        fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score", "num"])
         for block_min, block_data in heuristic_block.items():
             for action, data in block_data["action"].items():
-                fout.writerow([action, block_min, block_data["block_maxStateId"], block_data["block_name"], data])
+                fout.writerow([action, block_min, block_data["block_maxStateId"], block_data["block_name"], data["score"], data["num"]])
 
     with open(os.path.join(now_dir, "../train/heuristic_entity.csv"), "w", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
-        fout.writerow(["entity_id", "entity_name", "killable", "score"])
+        fout.writerow(["entity_id", "entity_name", "killable", "score", "num"])
         for entity_id, entity_data in heuristic_entity.items():
-            fout.writerow([entity_id, entity_data["entity_name"], int(entity_data["killable"]), entity_data["score"]])
-    
+            fout.writerow([entity_id, entity_data["entity_name"], int(entity_data["killable"]), entity_data["score"], entity_data["num"]])
+
     with open(os.path.join(now_dir, "../train/score.csv"), "a", newline="", encoding="utf-8") as f:
         fout = csv.writer(f)
         for i in gv.score_temp:
@@ -132,7 +136,6 @@ def check_window() -> None:
         time.sleep(1)
 
 def gain_item(item: dict) -> None:
-    global heuristic_block
     score = 0
     for k, v in item.items():
         score += 2 ** item_rarity[k]["rarity"] * v
@@ -141,23 +144,17 @@ def gain_item(item: dict) -> None:
 
 def plus(s: int) -> None:
     global heuristic_block
-    print(f"Score plus: {s}")
+    print(f"Score change: {s}")
     if last_op[0] and last_op[1]:
-        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]] += s
-        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"] += s
+        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["num"] += 1
+        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["score"] += (s - heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["score"]) * (1 / heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]]["num"])
+        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["num"] += 1
+        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["score"] += (s - heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["score"]) * (1 / heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"]["num"])
         gv.score_all += s
 
-def minus(s: int) -> None:
-    global heuristic_block
-    print(f"Score minus: {s}")
-    if last_op[0] and last_op[1]:
-        heuristic_block[mc.get_block_min(last_op[0])]["action"][last_op[1]] -= s
-        heuristic_block[gv.f3[gv.player_list[gv.info["agent_name"]]]["block"]]["action"]["offset"] -= s
-        gv.score_all += s
-
-def dfs(x: float, y: float, z: float, sim: list = gv.movement, dep: int = 2) -> tuple[list, int]:
+def dfs(x: float, y: float, z: float, sim: list = gv.movement, dep: int = 2) -> tuple[list, float]:
     if dep <= 0:
-        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]
+        return [], heuristic_block[mc.get_block_min(mc.get_block(x, y, z))]["action"]["offset"]["score"]
     
     ans = []
     for i in sim:
@@ -170,7 +167,7 @@ def dfs(x: float, y: float, z: float, sim: list = gv.movement, dep: int = 2) -> 
         for k, v in choice.items():
             if k != "offset":
                 _, aft = dfs(nx, ny, nz, sim, dep - 1)
-                nows = v + aft
+                nows = v["score"] + aft
                 if nows > score:
                     score = nows
                     ans = [k]
@@ -193,7 +190,7 @@ def start() -> None:
             window[0].restore()
             window[0].activate()
             break
-        print("Please ensure that you are in the game, not pausing, chatting, or using the inventory.")
+        print("**Please ensure that you are in the game, not pausing, chatting, or using the inventory.**")
         time.sleep(5)
     print("Agent started successfully.")
 

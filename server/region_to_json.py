@@ -3,7 +3,12 @@ import json
 import os
 import time
 
-def process_region(region_path, skip_air=True):
+now_dir = os.path.dirname(__file__)
+with open(os.path.join(now_dir, "../train/MCdata/blocks.json"), "r", encoding="utf-8") as f:
+    fin = json.load(f)
+    block_info = {i["name"]: i["minStateId"] for i in fin}
+
+def process_region(region_path, blocks, info, skip_air=False):
     """Process a Minecraft region file and return all blocks"""
     print(f"Loading region file: {region_path}")
     
@@ -11,15 +16,19 @@ def process_region(region_path, skip_air=True):
         region = anvil.Region.from_file(region_path)
     except Exception as e:
         print(f"Error loading region {region_path}: {e}")
-        return []
-    
-    all_blocks = []
+        return
     
     # Extract region X and Z from filename (r.X.Z.mca)
     filename = os.path.basename(region_path)
     parts = filename.split('.')
     region_x = int(parts[1])
     region_z = int(parts[2])
+    fout_name = os.path.join(now_dir, f"../world_cache/{info["server"]}_{info["port"]}_block_{region_x}_{region_z}.json")
+    blocks = {}
+
+    if os.path.exists(fout_name):
+        print(f"Region {filename} already processed.")
+        return
     
     # Calculate region offset in blocks
     region_x_offset = region_x * 512
@@ -53,21 +62,20 @@ def process_region(region_path, skip_air=True):
                                 world_x = world_x_base + local_x
                                 world_z = world_z_base + local_z
                                 
-                                all_blocks.append({
-                                    "id": block.id,
-                                    "x": world_x,
-                                    "y": y,
-                                    "z": world_z,
-                                })
+                                if str(world_x) not in blocks:
+                                    blocks[str(world_x)] = {}
+                                if str(y) not in blocks[str(world_x)]:
+                                    blocks[str(world_x)][str(y)] = {}
+                                blocks[str(world_x)][str(y)][str(world_z)] = block_info[block.id]
                             except Exception as e:
                                 # Skip blocks that can't be accessed
                                 pass
             except Exception as e:
                 # This chunk probably doesn't exist, skip it
                 pass
-    
-    print(f"Found {len(all_blocks)} blocks in {region_path}")
-    return all_blocks
+    with open(fout_name, "w", encoding='utf-8') as f:
+        json.dump(blocks, f)
+    print(f"Found {len(blocks)} blocks in {region_path}")
 
 if __name__ == "__main__":
     # Define the regions to process

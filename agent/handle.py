@@ -9,6 +9,7 @@ import csv
 import json
 import math
 import os
+import subprocess
 import threading
 import time
 from rich.live import Live
@@ -35,7 +36,7 @@ from minecraft.networking.packets.serverbound.play import (
     PositionAndLookPacket
 )
 
-from .agent import minus, gain_item
+from .agent import plus, gain_item
 from . import mc
 from . import global_var as gv
 
@@ -81,6 +82,7 @@ def handle_join(pkt: JoinGamePacket):
             response = mcr.command(f"op {gv.info["username"]}")
             print(f"RCON Response: {response}")
         cmd("gamemode spectator")
+        cmd("gamerule doImmediateRespawn true")
     except Exception as e:
         print(f"Error connecting to RCON: {e}")
         print(f"Remember to set 'op {gv.info["username"]}' in the server.")
@@ -125,7 +127,7 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
                 gv.f3[gv.player_list[name]]["z"] = text[2]
             elif isinstance(text, float) and text >= 0 and text <= 20:
                 if text < gv.f3[gv.player_list[name]]["health"]:
-                    minus(2 ** int((gv.f3[gv.player_list[name]]["health"] - text)) * int(20 - text))
+                    plus(2 ** int((gv.f3[gv.player_list[name]]["health"] - text)) * int(20 - text) * -1)
                 gv.f3[gv.player_list[name]]["health"] = text
             elif isinstance(text, int) and text >= 0 and text <= 20:
                 gv.f3[gv.player_list[name]]["hungry"] = text
@@ -150,7 +152,8 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
         # ----------------------------------------
         # | TODO: agent死亡時，請想辦法讓它自動復活 |
         # ----------------------------------------
-        minus(1024)
+        #cmd(f"gamemode survival {gv.info["agent_name"]}")
+        plus(-1024)
         with open(os.path.join(now_dir, "../train/death_time.csv"), "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow([gv.world_time])
     else:

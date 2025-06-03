@@ -29,10 +29,10 @@ def init_h_block() -> None:
     
     with open(os.path.join(now_dir, "heuristic_block.csv"), "w", newline="") as f:
         fout = csv.writer(f)
-        fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score"])
+        fout.writerow(["action", "block_minStateId", "block_maxStateId", "block_name", "score", "num"])
         for i in act:
             for j in block:
-                fout.writerow([i, j["minStateId"], j["maxStateId"], j["name"], 0])
+                fout.writerow([i, j["minStateId"], j["maxStateId"], j["name"], 0, 0])
 
 def init_h_entity() -> None:
     with open(os.path.join(now_dir, "MCdata/entities.json"), "r", encoding="utf-8") as f:
@@ -46,9 +46,9 @@ def init_h_entity() -> None:
     
     with open(os.path.join(now_dir, "heuristic_entity.csv"), "w", newline="") as f:
         fout = csv.writer(f)
-        fout.writerow(["entity_id", "entity_name", "killable", "score"])
+        fout.writerow(["entity_id", "entity_name", "killable", "score", "num"])
         for i in entity:
-            fout.writerow([i["id"], i["name"], 0, 0])
+            fout.writerow([i["id"], i["name"], 0, 0, 0])
 
 def init_rarity() -> None:
     with open(os.path.join(now_dir, "MCdata/items.json"), "r", encoding="utf-8") as f:

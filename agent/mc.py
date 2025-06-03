@@ -9,6 +9,8 @@ import json
 import math
 import numpy as np
 import os
+import threading
+import time
 
 import nbtlib
 from sortedcontainers import SortedDict
@@ -17,20 +19,21 @@ from minecraft.networking.types import Position
 from . import global_var as gv
 
 now_dir = os.path.dirname(__file__)
-try:
-    with open(os.path.join(now_dir, f"../world_cache/{gv.info["server"]}_{gv.info["port"]}_block.json"), "r", encoding="utf-8") as f:
-        block = json.load(f)
-except:
-    block = {} # block[x][y][z] = block_state_id
+block = {} # block[x][y][z] = block_state_id
 block_name_dict = SortedDict()
 hotkey = [""] * 9
+loading = False
 
-def load_world(seed: int) -> None:
-    if not block:
-        # -------------------------------------------------------------------------------------------------------
-        # | TODO: 想辦法獲得這個地圖種子碼每個block座標跟block_state_id，存到 mc.block[x][y][z] = block_state_id 中 |
-        # -------------------------------------------------------------------------------------------------------
-        save_block()
+def load_world() -> None:
+    global block, loading
+    loading = True
+    try:
+        with open(os.path.join(now_dir, f"../world_cache/{gv.info["server"]}_{gv.info["port"]}_block_{gv.f3[gv.player_list[gv.info["agent_name"]]]["x"] // 512}_{gv.info["server"]}_{gv.info["port"]}_block_{gv.f3[gv.player_list[gv.info["agent_name"]]]["z"] // 512}.json"), "r", encoding="utf-8") as f:
+            block = json.load(f)
+    except:
+        block = {}
+        time.sleep(60)
+    loading = False
 
 def extra(ipt: list) -> str:
     ans = ""
@@ -75,10 +78,8 @@ def get_block(x: float, y: float, z: float) -> int:
     try:
         return block[str(x)][str(y)][str(z)]
     except KeyError:
-        #print(f"{handle.connect.world_get_block(Position(x, y, z))}") #FAKE
-        # -------------------------------------------
-        # | TODO: 想辦法獲得這個block的block_state_id |
-        # -------------------------------------------
+        if not loading:
+            threading.Thread(target=load_world).start()
         return -1
     
 def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 4.5, s: float = 0.1) -> int:
