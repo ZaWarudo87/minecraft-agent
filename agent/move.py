@@ -180,7 +180,7 @@ def move(cmd: str) -> None:
                 mouse.press(Button.left)
                 #print(f"Breaking block {mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])} at {tar_coor}")
                 st = time.time()
-                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])) and not mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"]) == target and time.time() - st < 5:
+                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])) and mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"]) == target and time.time() - st < 5:
                     time.sleep(gv.TICK)
                 mouse.release(Button.left)
             turn_down(TURN_45_DEG * (deg // 45) * -1)

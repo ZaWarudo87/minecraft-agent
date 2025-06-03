@@ -8,7 +8,7 @@ with open(os.path.join(now_dir, "../train/MCdata/blocks.json"), "r", encoding="u
     fin = json.load(f)
     block_info = {i["name"]: i["minStateId"] for i in fin}
 
-def process_region(region_path, info, debug=False, skip_air=False):
+def process_region(region_path, info, blocks, debug=False, skip_air=False):
     """Process a Minecraft region file and return all blocks"""
     print(f"Loading region file: {region_path}")
     
@@ -24,7 +24,7 @@ def process_region(region_path, info, debug=False, skip_air=False):
     region_x = int(parts[1])
     region_z = int(parts[2])
     fout_name = os.path.join(now_dir, f"../world_cache/{info["server"]}_{info["port"]}_block_{region_x}_{region_z}.json")
-    blocks = {}
+    #blocks = {}
 
     if os.path.exists(fout_name):
         if debug:
@@ -75,8 +75,8 @@ def process_region(region_path, info, debug=False, skip_air=False):
             except Exception as e:
                 # This chunk probably doesn't exist, skip it
                 pass
-    with open(fout_name, "w", encoding='utf-8') as f:
-        json.dump(blocks, f)
+    # with open(fout_name, "w", encoding='utf-8') as f:
+    #     json.dump(blocks, f)
     print(f"Found {len(blocks)} blocks in {region_path}")
 
 if __name__ == "__main__":

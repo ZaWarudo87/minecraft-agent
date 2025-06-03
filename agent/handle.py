@@ -214,8 +214,9 @@ def update_coor() -> Table:
     coor_table.add_column("Pick")
 
     for k, v in gv.f3.items():
-        v["block"] = mc.get_block(v["x"], v["y"] - 1, v["z"])
-        v["gaze"] = mc.get_gaze_block(v["x"], v["y"] + 1, v["z"], v["yaw"], v["pitch"], look_you, v["look"])
+        if gv.player_list[gv.info["agent_name"]] == k:
+            v["block"] = mc.get_block(v["x"], v["y"] - 1, v["z"])
+            v["gaze"] = mc.get_gaze_block(v["x"], v["y"] + 1, v["z"], v["yaw"], v["pitch"], look_you, v["look"])
         coor_table.add_row(
             str(k),
             f"{v["x"]:.2f}",

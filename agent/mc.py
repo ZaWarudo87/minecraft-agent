@@ -33,9 +33,9 @@ def load_world() -> None:
     nz = int(gv.f3[gv.player_list[gv.info['agent_name']]]['z'] // 512)
     fname = f"../world_cache/{gv.info['server']}_{gv.info['port']}_block_{nx}_{nz}.json"
     print(f"Loading world from {fname}...")
+    if nx not in block:
+        block[nx] = {}
     try:
-        if nx not in block:
-            block[nx] = {}
         with open(os.path.join(now_dir, fname), "r", encoding="utf-8") as f:
             block[nx][nz] = json.load(f)
     except Exception as e:
@@ -99,7 +99,7 @@ def get_block(x: float, y: float, z: float) -> int:
             threading.Thread(target=load_world).start()
         return -1
     
-def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 4, s: float = 0.1) -> int:
+def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look: list = [False, False], look_coor: list = [0, 0, 0], mx: float = 3.5, s: float = 0.1) -> int:
     ya = math.radians(yaw)
     pi = math.radians(pitch)
     vx = -math.sin(ya) * math.cos(pi)
@@ -125,12 +125,16 @@ def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look:
 def set_block(x: int, y: int, z: int, id: int) -> None:
     #print(f"set block ({x}, {y}, {z}) to {get_block_name(id)}")
     global block
-    x, y, z = str(x), str(y), str(z)
-    if x not in block[x//512][z//512]:
-        block[x//512][z//512][x] = {}
-    if y not in block[x//512][z//512][x]:
-        block[x//512][z//512][x][y] = {}
-    block[x//512][z//512][x][y][z] = id
+    sx, sy, sz = str(x), str(y), str(z)
+    if x // 512 not in block:
+        block[x // 512] = {}
+    if z // 512 not in block[x // 512]:
+        block[x // 512][z // 512] = {}
+    if sx not in block[x // 512][z // 512]:
+        block[x // 512][z // 512][sx] = {}
+    if sy not in block[x // 512][z // 512][sx]:
+        block[x // 512][z // 512][sx][sy] = {}
+    block[x // 512][z // 512][sx][sy][sz] = id
 
 def save_block() -> None:
     with open(os.path.join(now_dir, fname), "w", encoding="utf-8") as f:
