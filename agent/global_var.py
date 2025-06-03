@@ -17,6 +17,7 @@ movement = [
     "walk_D", "sprint_D", "walk_DW", "sprint_DW",
     "break_U", "break_UF", "break_F", "break_DF", "break_D"
 ]
+get = False
 
 tool_num = {}
 dir_deg = {

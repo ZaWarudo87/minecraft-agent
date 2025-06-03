@@ -136,6 +136,7 @@ def check_window() -> None:
         time.sleep(1)
 
 def gain_item(item: dict) -> None:
+    gv.get = True
     score = 0
     for k, v in item.items():
         score += 2 ** item_rarity[k]["rarity"] * v

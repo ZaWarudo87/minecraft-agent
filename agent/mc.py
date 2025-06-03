@@ -103,7 +103,9 @@ def get_gaze_block(x: float, y: float, z: float, yaw: float, pitch: float, look:
         # TODO: check whether agent and master is look at each other
         bid = get_block(bx, by, bz)
         if not is_empty_block(bid):
-            look_coor = [bx, by, bz]
+            look_coor[0] = bx
+            look_coor[1] = by
+            look_coor[2] = bz
             return bid
     return bid
     

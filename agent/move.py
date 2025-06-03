@@ -155,6 +155,8 @@ def move(cmd: str) -> None:
             deg = gv.dir_deg[dir]
             turn_right(TURN_45_DEG * (deg // 45))
         elif cmd.startswith("break_"):
+            from .agent import plus
+            plus(0.1)
             if status["pressing_w"]:
                 kb.release("w")
                 status["pressing_w"] = False
@@ -163,7 +165,7 @@ def move(cmd: str) -> None:
             deg = gv.break_deg[dir]
             turn_down(TURN_45_DEG * (deg // 45))
             target = mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"])
-            print(f"Target block: {target}")
+            #print(f"Target block: {target}")
             tar_coor = gv.f3[gv.player_list[gv.info["agent_name"]]]["look"]
             if not mc.is_empty_block(target):
                 for i in gv.tool_num:
@@ -171,10 +173,9 @@ def move(cmd: str) -> None:
                         switch_tool(i)
                         break
                 mouse.press(Button.left)
-                bef = gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]
-                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])) and bef != gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]:
+                #print(f"Breaking block {mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])} at {tar_coor}")
+                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])):
                     time.sleep(gv.TICK)
-                    bef = gv.f3[gv.player_list[gv.info["agent_name"]]]["item"]
                 mouse.release(Button.left)
             turn_down(TURN_45_DEG * (deg // 45) * -1)
 
