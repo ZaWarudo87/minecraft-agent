@@ -37,6 +37,11 @@ status = {
 
 now_dir = os.path.dirname(__file__)
 block_info = {}
+block_info[-1] = {
+    "maxStateId": -1,
+    "name": "unknown",
+    "tool": []
+}
 with open(os.path.join(now_dir, "../train/MCdata/blocks.json"), "r", encoding="utf-8") as f:
     fin = json.load(f)
     for i in fin:
@@ -156,7 +161,6 @@ def move(cmd: str) -> None:
             turn_right(TURN_45_DEG * (deg // 45))
         elif cmd.startswith("break_"):
             from .agent import plus
-            plus(0.1)
             if status["pressing_w"]:
                 kb.release("w")
                 status["pressing_w"] = False
@@ -165,19 +169,34 @@ def move(cmd: str) -> None:
             deg = gv.break_deg[dir]
             turn_down(TURN_45_DEG * (deg // 45))
             target = mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"])
-            #print(f"Target block: {target}")
+            print(f"Target block: {target}, {block_info[target]['name']}, tool: {block_info[target]['tool']}")
             tar_coor = gv.f3[gv.player_list[gv.info["agent_name"]]]["look"]
             if not mc.is_empty_block(target):
+                plus(1)
                 for i in gv.tool_num:
-                    if block_info[target]["tool"] and i in block_info[target]["tool"]:
+                    if block_info[target]["tool"] and block_info[target]["tool"][0] in i:
                         switch_tool(i)
                         break
                 mouse.press(Button.left)
                 #print(f"Breaking block {mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])} at {tar_coor}")
-                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])):
+                st = time.time()
+                while not mc.is_empty_block(mc.get_block(tar_coor[0], tar_coor[1], tar_coor[2])) and not mc.get_block_min(gv.f3[gv.player_list[gv.info["agent_name"]]]["gaze"]) == target and time.time() - st < 5:
                     time.sleep(gv.TICK)
                 mouse.release(Button.left)
             turn_down(TURN_45_DEG * (deg // 45) * -1)
+
+def reset() -> None:
+    global status
+    if status["pressing_w"]:
+        kb.release("w")
+        status["pressing_w"] = False
+    if status["sprinting"]:
+        kb.release(Key.ctrl)
+        status["sprinting"] = False
+    if status["sneaking"]:
+        kb.release(Key.shift)
+        status["sneaking"] = False
+    mouse.release(Button.left)
 
 def move_sim(x: float, y: float, z: float, cmd: str) -> tuple[float, float, float, int]:
     # ----------------------------------------------------------------------------------------------------------------------------
@@ -208,6 +227,7 @@ def move_sim(x: float, y: float, z: float, cmd: str) -> tuple[float, float, floa
     return nx, ny, nz, [-2, bid][valid]
 
 def switch_tool(tool: str, t: float = gv.TICK) -> None:
+    print(gv.tool_num)
     if tool in gv.tool_num:
         kb.press(str(gv.tool_num[tool]))
         time.sleep(t)

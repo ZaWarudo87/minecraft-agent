@@ -17,9 +17,10 @@ from sortedcontainers import SortedDict
 from minecraft.networking.types import Position
 
 from . import global_var as gv
+import server.region_to_json as rtj
 
 now_dir = os.path.dirname(__file__)
-block = {} # block[x][y][z] = block_state_id
+block = {} # block[x//512][z//512][x][y][z] = block_state_id
 block_name_dict = SortedDict()
 hotkey = [""] * 9
 loading = False
@@ -28,16 +29,28 @@ fname = f"../world_cache/block.json"
 def load_world() -> None:
     global block, loading, fname
     loading = True
-    fname = f"../world_cache/{gv.info['server']}_{gv.info['port']}_block_{int(gv.f3[gv.player_list[gv.info['agent_name']]]['x'] // 512)}_{int(gv.f3[gv.player_list[gv.info['agent_name']]]['z'] // 512)}.json"
+    nx = int(gv.f3[gv.player_list[gv.info['agent_name']]]['x'] // 512)
+    nz = int(gv.f3[gv.player_list[gv.info['agent_name']]]['z'] // 512)
+    fname = f"../world_cache/{gv.info['server']}_{gv.info['port']}_block_{nx}_{nz}.json"
     print(f"Loading world from {fname}...")
     try:
+        if nx not in block:
+            block[nx] = {}
         with open(os.path.join(now_dir, fname), "r", encoding="utf-8") as f:
-            block = json.load(f)
+            block[nx][nz] = json.load(f)
     except Exception as e:
         print(f"Error loading world: {e}")
-        block = {}
+        block[nx][nz] = {}
         time.sleep(60)
     loading = False
+    # pth = os.path.join(now_dir, "../server/world/region")
+    # region_files = os.listdir(pth)
+    # for i in region_files:
+    #     region_path = os.path.join(pth, i)
+    #     if os.path.exists(region_path):
+    #         rtj.process_region(region_path, gv.info, block)
+    #     else:
+    #         print(f"Warning: {region_path} does not exist")
 
 def extra(ipt: list) -> str:
     ans = ""
@@ -80,7 +93,7 @@ def to_dict(ipt: nbtlib.Compound) -> dict:
 def get_block(x: float, y: float, z: float) -> int:
     x, y, z = int(math.floor(x)), int(round(y)), int(math.floor(z))
     try:
-        return block[str(x)][str(y)][str(z)]
+        return block[x//512][z//512][str(x)][str(y)][str(z)]
     except KeyError:
         if not loading:
             threading.Thread(target=load_world).start()
@@ -113,11 +126,11 @@ def set_block(x: int, y: int, z: int, id: int) -> None:
     #print(f"set block ({x}, {y}, {z}) to {get_block_name(id)}")
     global block
     x, y, z = str(x), str(y), str(z)
-    if x not in block:
-        block[x] = {}
-    if y not in block[x]:
-        block[x][y] = {}
-    block[x][y][z] = id
+    if x not in block[x//512][z//512]:
+        block[x//512][z//512][x] = {}
+    if y not in block[x//512][z//512][x]:
+        block[x//512][z//512][x][y] = {}
+    block[x//512][z//512][x][y][z] = id
 
 def save_block() -> None:
     with open(os.path.join(now_dir, fname), "w", encoding="utf-8") as f:

@@ -101,7 +101,7 @@ def handle_join(pkt: JoinGamePacket):
         abs_dir = os.path.abspath(os.path.join(now_dir, "../server"))
         subprocess.Popen(["cmd.exe ", "/c", f"start cmd.exe /k \"cd /d {abs_dir} && python regenerate_with_seed.py --seed {pkt.hashed_seed}\""])
     # else:
-    #     threading.Thread(target=lw, daemon=True).start()
+    #     threading.Thread(target=mc.load_world, daemon=True).start()
 
 def handle_player_list(pkt: PlayerListItemPacket) -> None:
     for action in pkt.actions:
@@ -170,6 +170,8 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
         # | TODO: agent死亡時，請想辦法讓它自動復活 |
         # ----------------------------------------
         #cmd(f"gamemode survival {gv.info["agent_name"]}")
+        from .move import reset
+        reset()
         plus(-1024)
         with open(os.path.join(now_dir, "../train/death_time.csv"), "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow([gv.world_time])
@@ -275,7 +277,7 @@ def keep_around() -> None:
                     pkt.pitch = 0
                     pkt.on_ground = False
                     gv.conn.write_packet(pkt)
-                    time.sleep(0.1)
+                    time.sleep(0.2)
         time.sleep(30)
 
 def cmd(line: str) -> None:
@@ -295,7 +297,7 @@ def lw() -> None:
     for i in region_files:
         region_path = os.path.join(pth, i)
         if os.path.exists(region_path):
-            rtj.process_region(region_path, gv.info)
+            rtj.process_region(region_path, gv.info, {})
         else:
             print(f"Warning: Region file {region_path} not found, skipping")
     obs.schedule(NewFileHandler(), path=pth, recursive=False)

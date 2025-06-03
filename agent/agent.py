@@ -139,7 +139,7 @@ def gain_item(item: dict) -> None:
     gv.get = True
     score = 0
     for k, v in item.items():
-        score += 2 ** item_rarity[k]["rarity"] * v
+        score += 2 ** item_rarity[k]["rarity"] * 5 * v
     if score > 0:
         plus(score)
 
@@ -217,7 +217,7 @@ def start() -> None:
             move.move(result)
             now_dist = get_dist()
             if now_dist != -1 and now_dist < last_dist:
-                plus((last_dist - now_dist) * last_dist)
+                plus(((last_dist - now_dist) * last_dist) ** 0.25 / 2)
             if gv.f3[gv.player_list[gv.info["agent_name"]]]["dv"] < 0.1:
                 stuck += 0.01
                 plus(-stuck)
