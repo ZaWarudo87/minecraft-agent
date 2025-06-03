@@ -18,12 +18,14 @@ from pynput.mouse import Button, Controller as MouseController
 
 from . import mc
 from . import global_var as gv
+from .handle import cmd
 
 TURN_45_DEG = 0.105
 # Data from Minecraft Wiki
 WALK_SPEED = 0.21585
 SPRINT_SPEED = 0.2806
 JUMP_HEIGHT = 1.2522
+EAT_SPEED = 1.6
 
 kb = KeyboardController()
 mouse = MouseController()
@@ -111,6 +113,14 @@ def move(cmd: str) -> None:
                 status["sprinting"] = False
             kb.press(Key.shift)
             status["sneaking"] = True
+        if gv.f3[gv.player_list[gv.info["agent_name"]]]["hungry"] < 17:
+            for i in gv.tool_num:
+                if "cooked" in i:
+                    switch_tool(i)
+                    click_right(EAT_SPEED)
+                    break
+            else:
+                cmd("I need cooked food!")
     else:
         if status["sneaking"]:
             kb.release(Key.shift)
@@ -126,11 +136,13 @@ def move(cmd: str) -> None:
                 for i in gv.tool_num:
                     if not any(j in i for j in ("hoe", "shovel", "axe", "sword", "cooked")):
                         switch_tool(i)
-                    break
-                for i in range(10):
-                    #print("click")
-                    click_right()
-                    time.sleep(gv.TICK)
+                        for i in range(10):
+                            #print("click")
+                            click_right()
+                            time.sleep(gv.TICK)
+                        break
+                else:
+                    cmd("I need blocks to place!")
                 turn_down(TURN_45_DEG * -2)
         elif cmd.startswith("sprint_") or cmd.startswith("walk_"):
             dir = [cmd[len("sprint_"):], cmd[len("walk_"):]][cmd[0] == "w"]

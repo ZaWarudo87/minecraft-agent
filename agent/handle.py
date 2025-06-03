@@ -6,8 +6,6 @@ TODO
 """
 
 import csv
-import json
-import math
 import os
 import subprocess
 import threading
@@ -16,7 +14,8 @@ from rich.live import Live
 from rich.table import Table
 
 from mcrcon import MCRcon
-from minecraft.networking.connection import Connection
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from minecraft.networking.packets import Packet, ChatPacket
 from minecraft.networking.packets.clientbound.play import (
     BlockChangePacket,
@@ -39,12 +38,27 @@ from minecraft.networking.packets.serverbound.play import (
 from .agent import plus, gain_item
 from . import mc
 from . import global_var as gv
+import server.region_to_json as rtj
 
 my_coor = {"x": 0.0, "y": 0.0, "z": 0.0}
 look_you = [False, False] # agent_look_master, master_look_agent
 receiving = False
 
 now_dir = os.path.dirname(__file__)
+pth = os.path.join(now_dir, "../server/world/region")
+
+class NewFileHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if not event.is_directory:
+            event_path = os.path.join(pth, event.src_path)
+            print(f"New file detected: {event_path}")
+            rtj.process_region(event_path, gv.info)
+
+    def on_modified(self, event):
+        if not event.is_directory:
+            event_path = os.path.join(pth, event.src_path)
+            print(f"File modified: {event_path}")
+            rtj.process_region(event_path, gv.info)
 
 def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
     for i in [k for k, v in gv.player_list.items() if v == pkt.player_UUID]:
@@ -69,14 +83,11 @@ def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
     }
     
 def handle_self_pos(pkt: PlayerPositionAndLookPacket):
-    global my_coor
+    global my_coor, pth
     my_coor = {"x": pkt.x, "y": pkt.y, "z": pkt.z}
 
 def handle_join(pkt: JoinGamePacket):
     print(f"Connected. Entity ID: {pkt.entity_id}")
-    if gv.info["server"] != "localhost":
-        pass
-        # mc.load_world(pkt.hashed_seed)
     try:
         with MCRcon(gv.info["server"], "doggybot", port=25575) as mcr:
             response = mcr.command(f"op {gv.info["username"]}")
@@ -86,6 +97,20 @@ def handle_join(pkt: JoinGamePacket):
     except Exception as e:
         print(f"Error connecting to RCON: {e}")
         print(f"Remember to set 'op {gv.info["username"]}' in the server.")
+    if gv.info["server"] != "localhost":
+        abs_dir = os.path.abspath(os.path.join(now_dir, "../server"))
+        subprocess.Popen(["cmd.exe", "/c", f"start cmd.exe /k \"cd /d {abs_dir} && python regenerate_with_seed.py --seed {pkt.hashed_seed}\""])
+    else:
+        region_files = os.listdir(pth)
+        for i in region_files:
+            region_path = os.path.join(pth, i)
+            if os.path.exists(region_path):
+                rtj.process_region(region_path, gv.info)
+            else:
+                print(f"Warning: Region file {region_path} not found, skipping")
+    obs = Observer()
+    obs.schedule(NewFileHandler(), path=pth, recursive=False)
+    obs.start()
 
 def handle_player_list(pkt: PlayerListItemPacket) -> None:
     for action in pkt.actions:
