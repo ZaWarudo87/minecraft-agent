@@ -35,7 +35,6 @@ from minecraft.networking.packets.serverbound.play import (
     PositionAndLookPacket
 )
 
-from .agent import plus, gain_item
 from . import mc
 from . import global_var as gv
 import server.region_to_json as rtj
@@ -52,13 +51,13 @@ class NewFileHandler(FileSystemEventHandler):
         if not event.is_directory:
             event_path = os.path.join(pth, event.src_path)
             print(f"New file detected: {event_path}")
-            rtj.process_region(event_path, gv.info)
+            threading.Thread(target=rtj.process_region, args=(event_path, gv.info), daemon=True).start()
 
     def on_modified(self, event):
         if not event.is_directory:
             event_path = os.path.join(pth, event.src_path)
             print(f"File modified: {event_path}")
-            rtj.process_region(event_path, gv.info)
+            threading.Thread(target=rtj.process_region, args=(event_path, gv.info), daemon=True).start()
 
 def handle_spawn_player(pkt: SpawnPlayerPacket) -> None:
     for i in [k for k, v in gv.player_list.items() if v == pkt.player_UUID]:
@@ -101,13 +100,7 @@ def handle_join(pkt: JoinGamePacket):
         abs_dir = os.path.abspath(os.path.join(now_dir, "../server"))
         subprocess.Popen(["cmd.exe", "/c", f"start cmd.exe /k \"cd /d {abs_dir} && python regenerate_with_seed.py --seed {pkt.hashed_seed}\""])
     else:
-        region_files = os.listdir(pth)
-        for i in region_files:
-            region_path = os.path.join(pth, i)
-            if os.path.exists(region_path):
-                rtj.process_region(region_path, gv.info)
-            else:
-                print(f"Warning: Region file {region_path} not found, skipping")
+        threading.Thread(target=lw, daemon=True).start()
     obs = Observer()
     obs.schedule(NewFileHandler(), path=pth, recursive=False)
     obs.start()
@@ -143,6 +136,7 @@ def handle_chat(pkt: ChatMessagePacket) -> None:
     # | TODO: 想辦法接到你的指令回傳結果，並做出相應處理                                          |
     # |       指令執行結果的 text 只會有值本人而已，我也找不到辦法去抓到是哪條指令發出才得到這個結果 |
     # -----------------------------------------------------------------------------------------
+    from .agent import plus, gain_item
     if cmdt == "commands.data.entity.query":
         if name in gv.player_list and gv.player_list[name] in gv.f3:
             if isinstance(text, list) and len(text) == 3 and all(isinstance(i, float) for i in text):
@@ -297,6 +291,15 @@ def get_dist() -> float:
         master_pos = gv.f3[master_id]
         return ((agent_pos["x"] - master_pos["x"]) ** 2 + (agent_pos["y"] - master_pos["y"]) ** 2 + (agent_pos["z"] - master_pos["z"]) ** 2) ** 0.5
     return -1
+
+def lw() -> None:
+    region_files = os.listdir(pth)
+    for i in region_files:
+        region_path = os.path.join(pth, i)
+        if os.path.exists(region_path):
+            rtj.process_region(region_path, gv.info)
+        else:
+            print(f"Warning: Region file {region_path} not found, skipping")
 
 def handle() -> None:
     gv.conn.register_packet_listener(handle_spawn_player, SpawnPlayerPacket)

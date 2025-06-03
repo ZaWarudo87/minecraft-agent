@@ -190,8 +190,9 @@ def start() -> None:
             window[0].restore()
             window[0].activate()
             break
-        print("**Please ensure that you are in the game, not pausing, chatting, or using the inventory.**")
-        time.sleep(5)
+        time.sleep(1)
+    print("**Please ensure that you are in the game, not pausing, chatting, or using the inventory.**")
+    time.sleep(3)
     print("Agent started successfully.")
 
     try:

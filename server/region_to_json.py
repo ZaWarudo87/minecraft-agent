@@ -8,7 +8,7 @@ with open(os.path.join(now_dir, "../train/MCdata/blocks.json"), "r", encoding="u
     fin = json.load(f)
     block_info = {i["name"]: i["minStateId"] for i in fin}
 
-def process_region(region_path, blocks, info, skip_air=False):
+def process_region(region_path, info, debug=False, skip_air=False):
     """Process a Minecraft region file and return all blocks"""
     print(f"Loading region file: {region_path}")
     
@@ -27,9 +27,10 @@ def process_region(region_path, blocks, info, skip_air=False):
     blocks = {}
 
     if os.path.exists(fout_name):
-        print(f"Region {filename} already processed.")
+        if debug:
+            print(f"Region {filename} already processed, skipping.")
         return
-    
+
     # Calculate region offset in blocks
     region_x_offset = region_x * 512
     region_z_offset = region_z * 512
@@ -40,7 +41,8 @@ def process_region(region_path, blocks, info, skip_air=False):
             try:
                 # Try to load this chunk
                 chunk = anvil.Chunk.from_region(region, chunk_x, chunk_z)
-                print(f"Processing chunk ({chunk_x}, {chunk_z}) in region {filename}")
+                if debug:
+                    print(f"Processing chunk ({chunk_x}, {chunk_z}) in region {filename}")
                 
                 # Calculate world coordinates
                 world_x_base = region_x_offset + (chunk_x * 16)
